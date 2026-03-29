@@ -33,7 +33,7 @@ export default function HomePage() {
       <section className="text-center space-y-6 pt-8">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Live on Solana Devnet · Powered by Drift Protocol
+          Live on Solana · Powered by Drift Protocol
         </div>
 
         <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
@@ -42,10 +42,11 @@ export default function HomePage() {
         </h1>
 
         <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
-          SolNeutral runs a delta-neutral strategy on Solana — long spot, short perpetual —
+          SolNeutral runs a delta-neutral strategy on Solana: long spot, short perpetual 
           collecting funding fees from Drift Protocol to generate consistent USDC yield
           regardless of market direction.
         </p>
+
 
         {loading && (
           <div className="text-gray-500 text-sm animate-pulse">Loading vault data...</div>
@@ -124,7 +125,7 @@ export default function HomePage() {
             {
               step: "02",
               title: "Earn funding fees",
-              desc:  "The vault holds a short SOL-PERP position on Drift. When funding rates are positive — which is 92%+ of the time — you earn fees every hour.",
+              desc:  "The vault holds a short SOL-PERP position on Drift. When funding rates are positive  which is 92%+ of the time  you earn fees every hour.",
               color: "text-blue-400",
             },
             {
@@ -175,7 +176,7 @@ export default function HomePage() {
       <section className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6">
         <h3 className="text-amber-400 font-semibold mb-2">Risk disclosure</h3>
         <p className="text-gray-400 text-sm leading-relaxed">
-          SolNeutral is currently in simulation mode on Solana Devnet. Funding rates are variable
+          SolNeutral is currently on Solana mainnet. Funding rates are variable
           and can turn negative during extreme market conditions. While the delta-neutral structure
           eliminates directional price risk, smart contract risk, liquidation risk, and protocol
           risk still exist. Do not deposit funds you cannot afford to lose. This is not financial advice.

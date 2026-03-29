@@ -1,35 +1,36 @@
 "use client";
-
+ 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-
+import WalletButton from "@/components/WalletButton";
+ 
 const links = [
   { href: "/",          label: "Home"      },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/deposit",   label: "Deposit"   },
   { href: "/strategy",  label: "Strategy"  },
 ];
-
+ 
 export default function Navbar() {
-  const pathname  = usePathname();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-
+ 
   return (
-    <nav className="border-b border-gray-800 bg-gray-950 sticky top-0 z-50">
+    <nav className="border-b border-gray-800 bg-gray-950 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-16">
-
+ 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-            <span className="text-gray-950 font-bold text-sm">SN</span>
+            <span className="text-gray-950 font-bold text-xs">SN</span>
           </div>
           <span className="text-white font-semibold text-lg tracking-tight">
             Sol<span className="text-emerald-400">Neutral</span>
           </span>
         </Link>
-
-        {/* Desktop nav */}
+ 
+        {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1">
           {links.map((link) => (
             <Link
@@ -45,13 +46,12 @@ export default function Navbar() {
             </Link>
           ))}
         </div>
-
-        {/* Live badge */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400 text-xs font-medium">Live on Devnet</span>
+ 
+        {/* Wallet button — desktop */}
+        <div className="hidden md:flex items-center">
+          <WalletButton />
         </div>
-
+ 
         {/* Mobile menu button */}
         <button
           className="md:hidden text-gray-400 hover:text-white"
@@ -64,11 +64,12 @@ export default function Navbar() {
             }
           </svg>
         </button>
+ 
       </div>
-
+ 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-gray-800 bg-gray-950 px-4 py-3 flex flex-col gap-1">
+        <div className="md:hidden border-t border-gray-800 bg-gray-950 px-4 py-3 flex flex-col gap-2">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -83,6 +84,9 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <div className="pt-2 border-t border-gray-800">
+            <WalletButton fullWidth />
+          </div>
         </div>
       )}
     </nav>

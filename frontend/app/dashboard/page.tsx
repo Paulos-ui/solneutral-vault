@@ -1,15 +1,19 @@
 "use client";
-
+ 
 import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
   getVaultStats, getPnLData, getRebalanceEvents, getRiskMetrics,
   VaultStats, PnLDataPoint, RebalanceEvent, RiskMetrics,
   formatUSDC, formatPct, formatDateTime,
 } from "@/lib/api";
-import StatCard from "@/components/StatCard";
-import PnLChart from "@/components/PnLChart";
-
+import StatCard    from "@/components/StatCard";
+import PnLChart    from "@/components/PnLChart";
+import PersonalPnL from "@/components/PersonalPnL";
+ 
 export default function DashboardPage() {
+  const { publicKey, connected } = useWallet();
+ 
   const [stats,      setStats]      = useState<VaultStats | null>(null);
   const [pnl,        setPnl]        = useState<PnLDataPoint[]>([]);
   const [rebalances, setRebalances] = useState<RebalanceEvent[]>([]);
@@ -17,7 +21,7 @@ export default function DashboardPage() {
   const [hours,      setHours]      = useState(168);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
-
+ 
   async function loadData(h: number) {
     setLoading(true);
     try {
@@ -37,18 +41,18 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }
-
+ 
   useEffect(() => { loadData(hours); }, [hours]);
-
+ 
   const riskColor = risk?.drawdown_status === "safe"
     ? "text-emerald-400"
     : risk?.drawdown_status === "warning"
     ? "text-amber-400"
     : "text-red-400";
-
+ 
   return (
     <div className="space-y-8">
-
+ 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -62,24 +66,24 @@ export default function DashboardPage() {
           <span className="text-emerald-400 text-xs">Strategy active</span>
         </div>
       </div>
-
+ 
       {error && (
         <div className="text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm">
           {error}
         </div>
       )}
-
+ 
       {loading && (
         <div className="text-gray-500 text-sm animate-pulse">Loading vault data...</div>
       )}
-
+ 
       {/* ── Top Stats ──────────────────────── */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Total Value Locked"
             value={formatUSDC(stats.tvl_usdc)}
-            sub="USDC deposited"
+            sub="USDC in vault"
             accent="green"
             large
           />
@@ -100,13 +104,16 @@ export default function DashboardPage() {
           <StatCard
             label="Max Drawdown"
             value={formatPct(stats.max_drawdown_pct)}
-            sub={`Limit: ${stats.max_drawdown_pct < 5 ? "Safe ✓" : "Monitor"}`}
+            sub={stats.max_drawdown_pct < 5 ? "Safe ✓" : "Monitor"}
             accent={stats.max_drawdown_pct < 5 ? "green" : "amber"}
             large
           />
         </div>
       )}
-
+ 
+      {/* ── Personal PnL ───────────────────── */}
+      <PersonalPnL />
+ 
       {/* ── PnL Chart ──────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -133,23 +140,21 @@ export default function DashboardPage() {
         </div>
         {pnl.length > 0 && <PnLChart data={pnl} title="" />}
       </div>
-
+ 
       {/* ── Risk + Rebalances ──────────────── */}
       <div className="grid md:grid-cols-2 gap-6">
-
-        {/* Risk panel */}
         {risk && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
             <h3 className="font-semibold text-white">Risk indicators</h3>
             {[
-              { label: "Drawdown status",    value: risk.drawdown_status.toUpperCase(), color: riskColor },
-              { label: "Max drawdown",        value: formatPct(risk.max_drawdown_pct)  },
-              { label: "Drawdown limit",      value: formatPct(risk.drawdown_limit_pct) },
-              { label: "Sharpe ratio",        value: risk.sharpe_ratio.toFixed(2)       },
-              { label: "Collateral buffer",   value: formatPct(risk.collateral_buffer_pct) },
-              { label: "Liquidation risk",    value: risk.liquidation_risk.toUpperCase(), color: "text-emerald-400" },
-              { label: "Strategy status",     value: risk.strategy_status.toUpperCase(),  color: "text-emerald-400" },
-              { label: "Next rebalance",      value: formatDateTime(risk.next_rebalance)  },
+              { label: "Drawdown status",   value: risk.drawdown_status.toUpperCase(), color: riskColor },
+              { label: "Max drawdown",      value: formatPct(risk.max_drawdown_pct)    },
+              { label: "Drawdown limit",    value: formatPct(risk.drawdown_limit_pct)  },
+              { label: "Sharpe ratio",      value: risk.sharpe_ratio.toFixed(2)        },
+              { label: "Collateral buffer", value: formatPct(risk.collateral_buffer_pct) },
+              { label: "Liquidation risk",  value: risk.liquidation_risk.toUpperCase(), color: "text-emerald-400" },
+              { label: "Strategy status",   value: risk.strategy_status.toUpperCase(),  color: "text-emerald-400" },
+              { label: "Next rebalance",    value: formatDateTime(risk.next_rebalance)  },
             ].map((row) => (
               <div key={row.label} className="flex justify-between text-sm">
                 <span className="text-gray-400">{row.label}</span>
@@ -158,8 +163,7 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-
-        {/* Rebalance log */}
+ 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h3 className="font-semibold text-white mb-4">Recent rebalances</h3>
           <div className="space-y-3 overflow-y-auto max-h-64">
@@ -170,7 +174,7 @@ export default function DashboardPage() {
               >
                 <div>
                   <span className="text-white font-medium">#{r.event_id}</span>
-                  <span className="text-gray-500 ml-2">{r.trigger}</span>
+                  <span className="text-gray-500 ml-2 text-xs">{r.trigger}</span>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-400 text-xs">{formatDateTime(r.timestamp)}</p>
@@ -181,7 +185,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
+ 
       {/* ── Vault config ───────────────────── */}
       {stats && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
@@ -201,7 +205,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-
+ 
     </div>
   );
 }
