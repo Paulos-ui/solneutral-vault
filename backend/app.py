@@ -36,7 +36,12 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # Allow Next.js frontend on any port to call this API
+CORS(app, origins=[
+    "http://localhost:3000",
+    "https://solneutral-vault.vercel.app",
+    "https://solneutral-vault-production.up.railway.app",
+    "*"
+])  # Allow Next.js frontend on any port to call this API
 
 # ─────────────────────────────────────────────
 # CONFIG
