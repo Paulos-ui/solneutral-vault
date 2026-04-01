@@ -68,6 +68,14 @@ SolNeutral delivers **high yield with low risk** by holding equal and opposite s
 
 ---
 
+## On-chain verification
+
+- **Program ID (devnet):** `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA`
+- **Solscan:** https://solscan.io/account/Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA?cluster=devnet
+- **Wallet:** `8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu`
+- **GitHub:** https://github.com/Paulos-ui/solneutral-vault
+- **Live demo:** https://solneutral-vault.vercel.app
+
 ## Key metrics
 
 | Metric | Value |
