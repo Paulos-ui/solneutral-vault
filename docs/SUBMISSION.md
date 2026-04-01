@@ -76,6 +76,19 @@ SolNeutral delivers **high yield with low risk** by holding equal and opposite s
 - **GitHub:** https://github.com/Paulos-ui/solneutral-vault
 - **Live demo:** https://solneutral-vault.vercel.app
 
+## Live Trading Proof
+
+**Exchange:** Drift Protocol (Solana mainnet)
+**Strategy:** Delta-neutral — SOL-PERP short
+**Wallet:** 8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu
+**Position:** 0.03 SOL short at $82.91 entry, 1x leverage
+**Collateral:** $2.64 USDC
+**Position health:** 97%
+**Date opened:** April 1, 2026
+**Solscan:** https://solscan.io/account/8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu
+**Drift account:** https://app.drift.trade
+**Status:** Active — collecting funding fees
+
 ## Key metrics
 
 | Metric | Value |
