@@ -60,6 +60,19 @@ Real delta-neutral position opened on Drift Protocol mainnet:
 | Rebalance events | 269 |
 | Simulation period | 90 days |
  
+
+## On-chain Vault Proof (Devnet)
+
+| Item | Address / TX |
+|---|---|
+| Program ID | `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA` |
+| Vault PDA | `3X8BTvktbRv2CLcLaortUrMa9s5Sk5qhuzKe47Y8GYhj` |
+| Vault USDC | `HDHkF3CqGNZwP6MubsvS9coxWgHU2s1SHKWzicUpDuRe` |
+| Initialize TX | `4hNrfUZ59j4jTF9...` |
+| Deposit TX | `2vd6kKLZeMqAQty...` |
+
+[View deposit on Solscan →](https://solscan.io/tx/2vd6kKLZeMqAQtyMWoCi6KHbvYLkNgJbGuESmLedcjzKitUHg1FTf7HW2c6QZG9aJ919SSV92HujBfKZKgxq8ZiD?cluster=devnet)
+
 ---
  
 ## Architecture

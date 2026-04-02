@@ -89,6 +89,28 @@ SolNeutral delivers **high yield with low risk** by holding equal and opposite s
 **Drift account:** https://app.drift.trade
 **Status:** Active — collecting funding fees
 
+## On-chain Vault Proof
+
+**Program ID:** `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA`
+**Vault PDA:** `3X8BTvktbRv2CLcLaortUrMa9s5Sk5qhuzKe47Y8GYhj`
+**Vault USDC Account:** `HDHkF3CqGNZwP6MubsvS9coxWgHU2s1SHKWzicUpDuRe`
+
+**Initialize TX:**
+`4hNrfUZ59j4jTF9xuHyWwCivUK9ybb7yrgXHTXapg5W6WDpZU4L9fcueeXH55AFPNz5wgnYq2goqsUe7n95rPsec`
+
+**Deposit TX (10 USDC confirmed on-chain):**
+`2vd6kKLZeMqAQtyMWoCi6KHbvYLkNgJbGuESmLedcjzKitUHg1FTf7HW2c6QZG9aJ919SSV92HujBfKZKgxq8ZiD`
+
+**Solscan deposit proof:**
+https://solscan.io/tx/2vd6kKLZeMqAQtyMWoCi6KHbvYLkNgJbGuESmLedcjzKitUHg1FTf7HW2c6QZG9aJ919SSV92HujBfKZKgxq8ZiD?cluster=devnet
+
+**Live Drift trade wallet:** `8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu`
+```
+
+Also copy the final `lib.rs` from Solana Playground and save it to:
+```
+vault/solneutral/programs/solneutral/src/lib.rs
+
 ## Key metrics
 
 | Metric | Value |
