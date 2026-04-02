@@ -21,7 +21,7 @@ import StatCard from "@/components/StatCard";
 // Vault authority — the wallet that initialized the vault
 // Replace with your actual authority public key after initialize is called
 const VAULT_AUTHORITY = new PublicKey(
-  "8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu"
+  "5CrPzp95LedfGpSEcSuLY873E4TfWvRaSK6kLjjPx8n7"
 );
 
 const NET_APY = 14.81;
