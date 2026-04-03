@@ -32,7 +32,7 @@ export default function RootLayout({
                   <span className="text-gray-950 font-bold text-xs">SN</span>
                 </div>
                 <span className="text-gray-400 text-sm">
-                  SolNeutral — Delta-Neutral Vault
+                  SolNeutral: Delta-Neutral Vault
                 </span>
               </div>
               <div className="flex gap-6 text-gray-600 text-xs">
