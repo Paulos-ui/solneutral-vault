@@ -11,7 +11,7 @@
 import { Program, AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { PublicKey, Connection, clusterApiUrl } from "@solana/web3.js";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { IDL, SolneutralIDL } from "./idl";
+import { IDL } from "./idl";
 
 export const PROGRAM_ID = new PublicKey("Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA");
 export const VAULT_AUTHORITY = new PublicKey("5CrPzp95LedfGpSEcSuLY873E4TfWvRaSK6kLjjPx8n7");
@@ -25,10 +25,10 @@ export function getConnection(): Connection {
   return new Connection(clusterApiUrl("devnet"), "confirmed");
 }
 
-export function getProgram(wallet: any): Program {
+export function getProgram(wallet: any): Program<any> {
   const connection = getConnection();
   const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
-  return new Program(IDL, provider);
+  return new Program(IDL as any, provider);
 }
 
 export function getVaultStatePDA(authority: PublicKey): [PublicKey, number] {
@@ -62,7 +62,7 @@ export interface VaultStateData {
 export async function fetchVaultState(wallet: any): Promise<VaultStateData | null> {
   try {
     const program = getProgram(wallet);
-    const state: any = await program.account.vaultState.fetch(VAULT_STATE_PDA);
+    const state: any = await (program.account as any).vaultState.fetch(VAULT_STATE_PDA);
     return {
       authority: state.authority,
       usdcMint: state.usdcMint,
@@ -101,7 +101,7 @@ export async function fetchUserPosition(wallet: any, user: PublicKey): Promise<U
   try {
     const program = getProgram(wallet);
     const [userPosPDA] = getUserPositionPDA(user, VAULT_STATE_PDA);
-    const pos: any = await program.account.userPosition.fetch(userPosPDA);
+    const pos: any = await (program.account as any).userPosition.fetch(userPosPDA);
     const now = Date.now() / 1000;
     const depositTs = pos.depositTimestamp.toNumber();
     const unlockTs = pos.unlockTimestamp.toNumber();
@@ -148,7 +148,7 @@ export async function depositToVault(
     const [userPositionPDA] = getUserPositionPDA(user, VAULT_STATE_PDA);
     const userUsdcATA = await getAssociatedTokenAddress(USDC_MINT, user);
 
-    const signature = await program.methods
+    const signature = await (program.methods as any)
       .deposit(amountRaw)
       .accounts({
         vaultState: VAULT_STATE_PDA,
@@ -179,7 +179,7 @@ export async function withdrawFromVault(
     const [userPositionPDA] = getUserPositionPDA(user, VAULT_STATE_PDA);
     const userUsdcATA = await getAssociatedTokenAddress(USDC_MINT, user);
 
-    const signature = await program.methods
+    const signature = await (program.methods as any)
       .withdraw()
       .accounts({
         vaultState: VAULT_STATE_PDA,

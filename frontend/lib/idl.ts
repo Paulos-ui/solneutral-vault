@@ -1,6 +1,4 @@
-import { Idl } from "@coral-xyz/anchor";
-
-export const IDL: Idl = {
+export const IDL = {
   address: "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA",
   metadata: {
     name: "solneutral",
@@ -104,4 +102,5 @@ export const IDL: Idl = {
   ],
 };
 
-export type SolneutralIDL = Idl;
+// Simple type export — no Idl import needed
+export type SolneutralIDL = typeof IDL;
