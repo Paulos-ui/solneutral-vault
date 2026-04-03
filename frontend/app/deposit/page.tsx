@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
 import {
   depositToVault,
   withdrawFromVault,
@@ -14,21 +13,14 @@ import {
   formatSolscanAccount,
 } from "@/lib/program";
 import { getWalletBalances, truncateAddress } from "@/lib/solana";
-import { formatUSDC, formatPct, formatDate } from "@/lib/api";
+import { formatUSDC, formatDate } from "@/lib/api";
 import WalletButton from "@/components/WalletButton";
 import StatCard from "@/components/StatCard";
-
-// Vault authority — the wallet that initialized the vault
-// Replace with your actual authority public key after initialize is called
-const VAULT_AUTHORITY = new PublicKey(
-  "5CrPzp95LedfGpSEcSuLY873E4TfWvRaSK6kLjjPx8n7"
-);
 
 const NET_APY = 14.81;
 
 export default function DepositPage() {
   const { publicKey, connected, wallet } = useWallet();
-  const { connection } = useConnection();
 
   const [amount,       setAmount]       = useState("");
   const [position,     setPosition]     = useState<UserPositionData | null>(null);
@@ -41,23 +33,18 @@ export default function DepositPage() {
   const [txSig,        setTxSig]        = useState<string | null>(null);
   const [tab,          setTab]          = useState<"deposit" | "withdraw">("deposit");
 
-  // Load on-chain data
   const loadData = useCallback(async () => {
     if (!publicKey || !wallet?.adapter) return;
     try {
       const [balances, pos] = await Promise.all([
         getWalletBalances(publicKey.toBase58()),
-        fetchUserPosition(wallet.adapter, publicKey, VAULT_AUTHORITY),
+        fetchUserPosition(wallet.adapter, publicKey),
       ]);
       setSolBalance(balances.sol);
       setUsdcBalance(balances.usdc);
       if (pos) {
         setPosition(pos);
-        const yield_ = calculateAccruedYield(
-          pos.depositedAmount,
-          pos.depositTimestamp
-        );
-        setAccruedYield(yield_);
+        setAccruedYield(calculateAccruedYield(pos.depositedAmount, pos.depositTimestamp));
       }
     } catch (e) {
       console.error(e);
@@ -67,15 +54,9 @@ export default function DepositPage() {
   useEffect(() => {
     if (connected && publicKey) {
       loadData();
-      // Refresh yield every 30 seconds
       const interval = setInterval(() => {
         if (position) {
-          setAccruedYield(
-            calculateAccruedYield(
-              position.depositedAmount,
-              position.depositTimestamp
-            )
-          );
+          setAccruedYield(calculateAccruedYield(position.depositedAmount, position.depositTimestamp));
         }
       }, 30_000);
       return () => clearInterval(interval);
@@ -86,7 +67,6 @@ export default function DepositPage() {
     }
   }, [connected, publicKey]);
 
-  // ── On-chain deposit ───────────────────────
   async function handleDeposit() {
     if (!publicKey || !wallet?.adapter) return setError("Connect your wallet first.");
     const amt = parseFloat(amount);
@@ -97,25 +77,18 @@ export default function DepositPage() {
     setSuccess(null);
     setTxSig(null);
 
-    const result = await depositToVault(
-      wallet.adapter,
-      publicKey,
-      VAULT_AUTHORITY,
-      amt
-    );
+    const result = await depositToVault(wallet.adapter, publicKey, amt);
 
     if (result.success && result.signature) {
       setTxSig(result.signature);
       setSuccess(`Deposit of ${formatUSDC(amt)} confirmed on-chain!`);
       await loadData();
     } else {
-      setError(result.error || "Deposit failed.");
+      setError(result.error || "Deposit failed. Check console for details.");
     }
-
     setLoading(false);
   }
 
-  // ── On-chain withdraw ──────────────────────
   async function handleWithdraw() {
     if (!publicKey || !wallet?.adapter) return setError("Connect your wallet first.");
 
@@ -123,11 +96,7 @@ export default function DepositPage() {
     setError(null);
     setSuccess(null);
 
-    const result = await withdrawFromVault(
-      wallet.adapter,
-      publicKey,
-      VAULT_AUTHORITY
-    );
+    const result = await withdrawFromVault(wallet.adapter, publicKey);
 
     if (result.success && result.signature) {
       setTxSig(result.signature);
@@ -137,7 +106,6 @@ export default function DepositPage() {
     } else {
       setError(result.error || "Withdrawal failed.");
     }
-
     setLoading(false);
   }
 
@@ -147,7 +115,6 @@ export default function DepositPage() {
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
 
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Deposit / Withdraw</h1>
         <p className="text-gray-400 text-sm mt-1">
@@ -158,9 +125,9 @@ export default function DepositPage() {
       {/* Program info */}
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl px-5 py-3 flex items-center justify-between">
         <div>
-          <p className="text-blue-400 text-xs font-medium">Smart contract</p>
+          <p className="text-blue-400 text-xs font-medium">Smart contract · Solana Devnet</p>
           <p className="text-gray-400 text-xs font-mono mt-0.5">
-            {PROGRAM_ID.toBase58().slice(0, 20)}...
+            {PROGRAM_ID.toBase58().slice(0, 24)}...
           </p>
         </div>
         <a
@@ -235,9 +202,7 @@ export default function DepositPage() {
                     ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                     : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                 }`}>
-                  {position.isLocked
-                    ? `Locked · ${position.daysRemaining}d left`
-                    : "Unlocked ✓"}
+                  {position.isLocked ? `Locked · ${position.daysRemaining}d left` : "Unlocked ✓"}
                 </span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -246,14 +211,12 @@ export default function DepositPage() {
                   <p className="text-white font-bold">{formatUSDC(position.depositedAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-xs mb-1">Accrued yield</p>
+                  <p className="text-gray-400 text-xs mb-1">Yield earned</p>
                   <p className="text-emerald-400 font-bold">{formatUSDC(accruedYield)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-xs mb-1">Current value</p>
-                  <p className="text-white font-bold">
-                    {formatUSDC(position.depositedAmount + accruedYield)}
-                  </p>
+                  <p className="text-white font-bold">{formatUSDC(position.depositedAmount + accruedYield)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-xs mb-1">Days in vault</p>
@@ -265,14 +228,6 @@ export default function DepositPage() {
                   Unlocks on {formatDate(position.unlockDate.toISOString())}
                 </p>
               )}
-              <a
-                href={formatSolscanAccount(walletStr)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 text-xs hover:underline mt-2 inline-block"
-              >
-                View on-chain position →
-              </a>
             </div>
           )}
 
@@ -303,7 +258,6 @@ export default function DepositPage() {
                 </p>
               </div>
 
-              {/* Amount input */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-gray-400 text-sm">Amount</label>
@@ -351,10 +305,10 @@ export default function DepositPage() {
                     Projected yield at {NET_APY}% net APY
                   </p>
                   {[
-                    { label: "1 hour",  mult: 1 / (365 * 24)  },
-                    { label: "1 day",   mult: 1 / 365          },
-                    { label: "90 days", mult: 90 / 365         },
-                    { label: "1 year",  mult: 1                },
+                    { label: "1 hour",  mult: 1 / (365 * 24) },
+                    { label: "1 day",   mult: 1 / 365         },
+                    { label: "90 days", mult: 90 / 365        },
+                    { label: "1 year",  mult: 1               },
                   ].map((row) => (
                     <div key={row.label} className="flex justify-between text-sm">
                       <span className="text-gray-500">{row.label}</span>
@@ -380,7 +334,6 @@ export default function DepositPage() {
                 </div>
               </div>
 
-              {/* Deposit button */}
               <button
                 onClick={handleDeposit}
                 disabled={loading || parsedAmount < 10}
@@ -398,7 +351,6 @@ export default function DepositPage() {
                 )}
               </button>
 
-              {/* Tx confirmation */}
               {txSig && (
                 <a
                   href={formatSolscanTx(txSig)}
@@ -438,9 +390,7 @@ export default function DepositPage() {
                     <StatCard
                       label="Lock status"
                       value={position.isLocked ? "Locked" : "Ready"}
-                      sub={position.isLocked
-                        ? `${position.daysRemaining} days left`
-                        : "Withdraw now ✓"}
+                      sub={position.isLocked ? `${position.daysRemaining} days left` : "Withdraw now ✓"}
                       accent={position.isLocked ? "amber" : "green"}
                     />
                   </div>
@@ -459,10 +409,7 @@ export default function DepositPage() {
               ) : (
                 <div className="text-center py-8 space-y-2">
                   <p className="text-gray-500">No active on-chain position found.</p>
-                  <button
-                    onClick={() => setTab("deposit")}
-                    className="text-emerald-400 text-sm hover:underline"
-                  >
+                  <button onClick={() => setTab("deposit")} className="text-emerald-400 text-sm hover:underline">
                     Make a deposit →
                   </button>
                 </div>
@@ -481,7 +428,6 @@ export default function DepositPage() {
             </div>
           )}
 
-          {/* Messages */}
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
               {error}
