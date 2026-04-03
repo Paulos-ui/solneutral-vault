@@ -1,12 +1,13 @@
-export const IDL = {
-  "address": "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA",
-  "metadata": {
-    "name": "solneutral",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "SolNeutral Anchor Program"
+import { Idl } from "@coral-xyz/anchor";
+
+export const IDL: Idl = {
+  address: "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA",
+  metadata: {
+    name: "solneutral",
+    version: "0.1.0",
+    description: "SolNeutral Anchor Program",
   },
-  "instructions": [
+  instructions: [
     {
       name: "initialize",
       accounts: [
@@ -101,6 +102,6 @@ export const IDL = {
     { code: 6004, name: "Unauthorized", msg: "Unauthorized: only the vault authority can perform this action" },
     { code: 6005, name: "MaxDrawdownExceeded", msg: "Vault has exceeded maximum drawdown limit" },
   ],
-} as const;
+};
 
-export type SolneutralIDL = typeof IDL;
+export type SolneutralIDL = Idl;
