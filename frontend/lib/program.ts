@@ -7,12 +7,12 @@
  * Vault USDC Account:  HDHkF3CqGNZwP6MubsvS9coxWgHU2s1SHKWzicUpDuRe
  * Network:             Solana Devnet
  */
-
+ 
 import { Program, AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { PublicKey, Connection, clusterApiUrl } from "@solana/web3.js";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { IDL, SolneutralIDL } from "./idl";
-
+ 
 export const PROGRAM_ID = new PublicKey("Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA");
 export const VAULT_AUTHORITY = new PublicKey("5CrPzp95LedfGpSEcSuLY873E4TfWvRaSK6kLjjPx8n7");
 export const VAULT_STATE_PDA = new PublicKey("3X8BTvktbRv2CLcLaortUrMa9s5Sk5qhuzKe47Y8GYhj");
@@ -20,31 +20,32 @@ export const VAULT_USDC_ACCOUNT = new PublicKey("HDHkF3CqGNZwP6MubsvS9coxWgHU2s1
 export const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 export const USDC_DECIMALS = 6;
 export const USDC_MULTIPLIER = Math.pow(10, USDC_DECIMALS);
-
+ 
 export function getConnection(): Connection {
   return new Connection(clusterApiUrl("devnet"), "confirmed");
 }
-
+ 
 export function getProgram(wallet: any): Program<SolneutralIDL> {
   const connection = getConnection();
   const provider = new AnchorProvider(connection, wallet, { commitment: "confirmed" });
-  return new Program(IDL as any, PROGRAM_ID, provider);
+  // Notice we don't NEED to pass PROGRAM_ID here anymore because it's in the IDL!
+  return new Program(IDL as SolneutralIDL, provider); 
 }
-
+ 
 export async function getVaultStatePDA(authority: PublicKey): Promise<[PublicKey, number]> {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("vault_state"), authority.toBuffer()],
     PROGRAM_ID
   );
 }
-
+ 
 export async function getUserPositionPDA(user: PublicKey, vaultState: PublicKey): Promise<[PublicKey, number]> {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("user_position"), user.toBuffer(), vaultState.toBuffer()],
     PROGRAM_ID
   );
 }
-
+ 
 export interface VaultStateData {
   authority: PublicKey;
   usdcMint: PublicKey;
@@ -58,7 +59,7 @@ export interface VaultStateData {
   isActive: boolean;
   bump: number;
 }
-
+ 
 export async function fetchVaultState(wallet: any): Promise<VaultStateData | null> {
   try {
     const program = getProgram(wallet);
@@ -81,7 +82,7 @@ export async function fetchVaultState(wallet: any): Promise<VaultStateData | nul
     return null;
   }
 }
-
+ 
 export interface UserPositionData {
   owner: PublicKey;
   vault: PublicKey;
@@ -96,7 +97,7 @@ export interface UserPositionData {
   isLocked: boolean;
   unlockDate: Date;
 }
-
+ 
 export async function fetchUserPosition(wallet: any, user: PublicKey): Promise<UserPositionData | null> {
   try {
     const program = getProgram(wallet);
@@ -123,7 +124,7 @@ export async function fetchUserPosition(wallet: any, user: PublicKey): Promise<U
     return null;
   }
 }
-
+ 
 export function calculateAccruedYield(depositedAmount: number, depositTimestamp: number, netApyBps: number = 1481): number {
   const now = Date.now() / 1000;
   const secondsInVault = now - depositTimestamp;
@@ -131,7 +132,7 @@ export function calculateAccruedYield(depositedAmount: number, depositTimestamp:
   const accrued = annualYield * (secondsInVault / (365 * 24 * 3600));
   return Math.max(0, accrued - accrued * 0.20);
 }
-
+ 
 export async function depositToVault(
   wallet: any,
   user: PublicKey,
@@ -143,7 +144,7 @@ export async function depositToVault(
     const amountRaw = new BN(Math.floor(amountUSDC * USDC_MULTIPLIER));
     const [userPositionPDA] = await getUserPositionPDA(user, VAULT_STATE_PDA);
     const userUsdcATA = await getAssociatedTokenAddress(USDC_MINT, user);
-
+ 
     const signature = await program.methods
       .deposit(amountRaw)
       .accounts({
@@ -156,7 +157,7 @@ export async function depositToVault(
         systemProgram: web3.SystemProgram.programId,
       })
       .rpc();
-
+ 
     await connection.confirmTransaction(signature, "confirmed");
     return { success: true, signature };
   } catch (e: any) {
@@ -164,7 +165,7 @@ export async function depositToVault(
     return { success: false, error: e.message || "Deposit transaction failed." };
   }
 }
-
+ 
 export async function withdrawFromVault(
   wallet: any,
   user: PublicKey
@@ -174,7 +175,7 @@ export async function withdrawFromVault(
     const connection = getConnection();
     const [userPositionPDA] = await getUserPositionPDA(user, VAULT_STATE_PDA);
     const userUsdcATA = await getAssociatedTokenAddress(USDC_MINT, user);
-
+ 
     const signature = await program.methods
       .withdraw()
       .accounts({
@@ -186,7 +187,7 @@ export async function withdrawFromVault(
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc();
-
+ 
     await connection.confirmTransaction(signature, "confirmed");
     return { success: true, signature };
   } catch (e: any) {
@@ -194,11 +195,12 @@ export async function withdrawFromVault(
     return { success: false, error: e.message || "Withdrawal transaction failed." };
   }
 }
-
+ 
 export function formatSolscanTx(signature: string): string {
   return `https://solscan.io/tx/${signature}?cluster=devnet`;
 }
-
+ 
 export function formatSolscanAccount(address: string): string {
   return `https://solscan.io/account/${address}?cluster=devnet`;
 }
+ 

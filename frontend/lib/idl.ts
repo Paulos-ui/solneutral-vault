@@ -1,7 +1,12 @@
 export const IDL = {
-  version: "0.1.0",
-  name: "solneutral",
-  instructions: [
+  "address": "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA",
+  "metadata": {
+    "name": "solneutral",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SolNeutral Anchor Program"
+  },
+  "instructions": [
     {
       name: "initialize",
       accounts: [
