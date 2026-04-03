@@ -7,7 +7,7 @@ import SolNeutralWalletProvider from "@/components/WalletProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title:       "SolNeutral — Delta-Neutral Vault on Solana",
+  title:       "SolNeutral: Delta-Neutral Vault on Solana",
   description: "Earn stable yield with zero directional risk. SolNeutral runs a delta-neutral strategy on Drift Protocol, targeting 10%+ APY.",
   keywords:    ["Solana", "DeFi", "delta-neutral", "yield", "Drift Protocol", "USDC vault"],
 };
