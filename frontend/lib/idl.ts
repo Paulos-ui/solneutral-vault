@@ -3,6 +3,7 @@ export const IDL = {
   metadata: {
     name: "solneutral",
     version: "0.1.0",
+    spec: "0.1.0",
     description: "SolNeutral Delta-Neutral Vault",
   },
   instructions: [
@@ -80,14 +81,14 @@ export const IDL = {
       type: {
         kind: "struct",
         fields: [
-          { name: "owner",             type: "publicKey" },
-          { name: "vault",             type: "publicKey" },
-          { name: "depositedAmount",   type: "u64"       },
-          { name: "shares",            type: "u64"       },
-          { name: "depositTimestamp",  type: "i64"       },
-          { name: "unlockTimestamp",   type: "i64"       },
-          { name: "yieldEarned",       type: "u64"       },
-          { name: "isActive",          type: "bool"      },
+          { name: "owner",            type: "publicKey" },
+          { name: "vault",            type: "publicKey" },
+          { name: "depositedAmount",  type: "u64"       },
+          { name: "shares",           type: "u64"       },
+          { name: "depositTimestamp", type: "i64"       },
+          { name: "unlockTimestamp",  type: "i64"       },
+          { name: "yieldEarned",      type: "u64"       },
+          { name: "isActive",         type: "bool"      },
         ],
       },
     },
