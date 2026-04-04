@@ -1,11 +1,6 @@
 export const IDL = {
-  address: "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA",
-  metadata: {
-    name: "solneutral",
-    version: "0.1.0",
-    spec: "0.1.0",
-    description: "SolNeutral Delta-Neutral Vault",
-  },
+  version: "0.1.0",
+  name: "solneutral",
   instructions: [
     {
       name: "initialize",
@@ -93,6 +88,8 @@ export const IDL = {
       },
     },
   ],
+  // ✅ Required by Anchor's BorshAccountsCoder — must be present even if empty
+  types: [],
   errors: [
     { code: 6000, name: "DepositTooSmall",     msg: "Deposit amount is below the minimum of 10 USDC" },
     { code: 6001, name: "VaultInactive",       msg: "Vault is currently inactive"                    },

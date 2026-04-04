@@ -23,13 +23,16 @@ export const USDC_MULTIPLIER    = Math.pow(10, USDC_DECIMALS);
 
 // ── Connection + Program ─────────────────────
 export function getConnection(): Connection {
-  return new Connection(clusterApiUrl("devnet"), "confirmed");
+  // Use Helius public RPC for better reliability than default devnet
+  const rpc = process.env.NEXT_PUBLIC_RPC_URL || 
+    "https://api.devnet.solana.com";
+  return new Connection(rpc, "confirmed");
 }
 
 // NOTE: Program<any> — avoids IDL generic constraint errors with Turbopack
 export function getProgram(wallet: any): Program<any> {
   const provider = new AnchorProvider(getConnection(), wallet, { commitment: "confirmed" });
-  return new Program<any>(IDL as any, provider);
+  return new Program<any>(IDL as any, PROGRAM_ID, provider);
 }
 
 // ── PDA helpers ──────────────────────────────
