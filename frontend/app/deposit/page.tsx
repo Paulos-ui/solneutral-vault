@@ -68,26 +68,36 @@ export default function DepositPage() {
   }, [connected, publicKey]);
 
   async function handleDeposit() {
-    if (!publicKey || !wallet?.adapter) return setError("Connect your wallet first.");
-    const amt = parseFloat(amount);
-    if (!amt || amt < 10) return setError("Minimum deposit is 10 USDC.");
+  if (!publicKey || !wallet?.adapter) return setError("Connect your wallet first.");
+  const amt = parseFloat(amount);
+  if (!amt || amt < 10) return setError("Minimum deposit is 10 USDC.");
 
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    setTxSig(null);
+  setLoading(true);
+  setError(null);
+  setSuccess(null);
+  setTxSig(null);
 
-    const result = await depositToVault(wallet.adapter, publicKey, amt);
+  const result = await depositToVault(wallet.adapter, publicKey, amt);
 
-    if (result.success && result.signature) {
-      setTxSig(result.signature);
-      setSuccess(`Deposit of ${formatUSDC(amt)} confirmed on-chain!`);
-      await loadData();
-    } else {
-      setError(result.error || "Deposit failed. Check console for details.");
-    }
+  if (result.error?.includes("already in use")) {
+    setError(
+      "You already have an active position in this vault. " +
+      "Each wallet can hold one position at a time. " +
+      "Please wait for your lock period to expire before depositing again."
+    );
     setLoading(false);
+    return;
   }
+
+  if (result.success && result.signature) {
+    setTxSig(result.signature);
+    setSuccess(`Deposit of ${formatUSDC(amt)} confirmed on-chain!`);
+    await loadData();
+  } else {
+    setError(result.error || "Deposit failed. Check console for details.");
+  }
+  setLoading(false);
+}
 
   async function handleWithdraw() {
     if (!publicKey || !wallet?.adapter) return setError("Connect your wallet first.");
