@@ -1,188 +1,24 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getVaultStats, getVaultAPY, VaultStats, VaultAPY, formatUSDC, formatPct } from "@/lib/api";
-import StatCard from "@/components/StatCard";
+import { HedgeField } from "@/components/HedgeField";
+import { Icon } from "@/components/Icons";
+import { Reveal } from "@/components/Reveal";
+import { ExposureChart } from "@/components/ExposureChart";
 
 export default function HomePage() {
-  const [stats, setStats]   = useState<VaultStats | null>(null);
-  const [apy,   setApy]     = useState<VaultAPY | null>(null);
-  const [error, setError]   = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const [s, a] = await Promise.all([getVaultStats(), getVaultAPY()]);
-        setStats(s);
-        setApy(a);
-      } catch (e: any) {
-        setError("Could not connect to SolNeutral API. Make sure the backend is running.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
-
-  return (
-    <div className="space-y-16">
-
-      {/* ── Hero ─────────────────────────────── */}
-      <section className="text-center space-y-6 pt-8">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Live on Solana · Powered by Drift Protocol
-        </div>
-
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-          Stable yield.<br />
-          <span className="text-emerald-400">Zero directional risk.</span>
-        </h1>
-
-        <p className="text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
-          SolNeutral runs a delta-neutral strategy on Solana: long spot, short perpetual 
-          collecting funding fees from Drift Protocol to generate consistent USDC yield
-          regardless of market direction.
-        </p>
-
-
-        {loading && (
-          <div className="text-gray-500 text-sm animate-pulse">Loading vault data...</div>
-        )}
-
-        {error && (
-          <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 max-w-md mx-auto">
-            {error}
-          </div>
-        )}
-
-        {stats && (
-          <div className="text-7xl font-bold text-emerald-400 tracking-tight">
-            {formatPct(stats.net_apy_pct)}
-            <span className="text-2xl text-gray-400 ml-2 font-normal">Net APY</span>
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/deposit"
-            className="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-semibold rounded-xl transition-colors"
-          >
-            Start Earning
-          </Link>
-          <Link
-            href="/strategy"
-            className="px-8 py-3.5 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors"
-          >
-            How It Works
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Live Stats Bar ───────────────────── */}
-      {stats && (
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Value Locked"
-            value={formatUSDC(stats.tvl_usdc)}
-            sub="USDC in vault"
-            accent="green"
-          />
-          <StatCard
-            label="Net APY"
-            value={formatPct(stats.net_apy_pct)}
-            sub={`Target: ${stats.target_apy_pct}% ✓`}
-            accent="blue"
-          />
-          <StatCard
-            label="Max Drawdown"
-            value={formatPct(stats.max_drawdown_pct)}
-            sub="Extremely low risk"
-            accent="purple"
-          />
-          <StatCard
-            label="Strategy"
-            value="Delta-Neutral"
-            sub="Drift Protocol perps"
-            accent="amber"
-          />
-        </section>
-      )}
-
-      {/* ── How It Works ─────────────────────── */}
-      <section className="space-y-8">
-        <h2 className="text-2xl font-bold text-center">How SolNeutral works</h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              step: "01",
-              title: "Deposit USDC",
-              desc:  "Deposit USDC into the vault. Your funds are split 50/50 between a spot position and perpetual collateral on Drift Protocol.",
-              color: "text-emerald-400",
-            },
-            {
-              step: "02",
-              title: "Earn funding fees",
-              desc:  "The vault holds a short SOL-PERP position on Drift. When funding rates are positive  which is 92%+ of the time  you earn fees every hour.",
-              color: "text-blue-400",
-            },
-            {
-              step: "03",
-              title: "Withdraw with yield",
-              desc:  "After the 90-day lock period, withdraw your USDC plus all accrued yield. No liquidation risk from price movements due to delta-neutrality.",
-              color: "text-purple-400",
-            },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-3"
-            >
-              <span className={`text-4xl font-bold ${item.color} opacity-40`}>{item.step}</span>
-              <h3 className="text-white font-semibold text-lg">{item.title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── APY Detail ───────────────────────── */}
-      {apy && (
-        <section className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-          <h2 className="text-xl font-bold mb-6">Live funding rate snapshot</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-gray-400 text-sm mb-1">Avg hourly rate</p>
-              <p className="text-white font-bold text-xl">{formatPct(apy.current_hourly_rate_pct)}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm mb-1">Projected annual</p>
-              <p className="text-emerald-400 font-bold text-xl">{formatPct(apy.projected_annual_pct)}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm mb-1">Positive hours</p>
-              <p className="text-white font-bold text-xl">{formatPct(apy.positive_hours_pct)}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 text-sm mb-1">Funding source</p>
-              <p className="text-white font-bold text-sm">{apy.funding_source}</p>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Risk Disclaimer ──────────────────── */}
-      <section className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6">
-        <h3 className="text-amber-400 font-semibold mb-2">Risk disclosure</h3>
-        <p className="text-gray-400 text-sm leading-relaxed">
-          SolNeutral is currently on Solana mainnet. Funding rates are variable
-          and can turn negative during extreme market conditions. While the delta-neutral structure
-          eliminates directional price risk, smart contract risk, liquidation risk, and protocol
-          risk still exist. Do not deposit funds you cannot afford to lose. This is not financial advice.
-        </p>
-      </section>
-
-    </div>
-  );
+  return <>
+    <section className="hero shell">
+      <div className="hero-copy"><div className="hero-meta"><span className="index-square">01 / 05</span><span>THE HEDGE OBSERVATORY</span><i/></div>
+        <Reveal><h1 className="hero-title">THE ART<br/>OF STAYING<br/><span>NEUTRAL<span className="title-period">.</span></span></h1></Reveal>
+        <Reveal delay={.16}><div className="hero-bottom-copy"><span className="ornament-asterisk">✳</span><div><p>Yield is visible.<br/><em>Risk should be too.</em></p><p className="hero-body">Explore the mechanics, measure the exposure, and challenge the assumptions behind delta-neutral strategies on Solana.</p><div className="hero-buttons"><Link href="/risk-lab" className="button-primary">ENTER THE RISK LAB <Icon name="arrowUp" size={18}/></Link><Link href="/about" className="text-link">OUR APPROACH <span>↗</span></Link></div></div></div></Reveal>
+      </div>
+      <div className="hero-visual"><HedgeField/></div>
+      <div className="hero-footnote"><span>01 — DISCIPLINE OVER PROMISES</span><span>DESIGNED FOR SOLANA / RESEARCH PREVIEW</span><span>SCROLL TO EXPLORE ↓</span></div>
+    </section>
+    <div className="marquee-band" aria-label="Protocol themes"><div className="marquee-track" aria-hidden="true">{Array.from({ length: 3 }, (_, i) => <span key={i}>HEDGE THE EXPOSURE <b>✳</b> QUESTION THE YIELD <b>✳</b> MEASURE THE RISK <b>✳</b> </span>)}</div></div>
+    <section className="thesis-section section-space shell"><div className="section-kicker"><span className="small-disc"/> 001 / THE THESIS <span className="kicker-rule"/></div><div className="thesis-grid"><Reveal><h2 className="display-heading">THE FUTURE OF<br/>DEFI ISN&apos;T<br/><em>LESS RISK.</em><br/>IT&apos;S <span>MORE TRUTH.</span></h2></Reveal><Reveal delay={.12}><div className="thesis-aside"><div className="aside-symbol">⌁</div><p>The market doesn&apos;t reward what you don&apos;t understand. A market-neutral strategy still carries funding, execution, liquidation, and protocol risk.</p><p>SolNeutral makes those moving parts legible, so the decision belongs to the user.</p><Link href="/about" className="text-link">READ THE THESIS <Icon name="arrowUp" size={16}/></Link></div></Reveal></div></section>
+    <section className="mechanics-section section-space"><div className="shell"><div className="section-kicker"><span className="small-disc"/> 002 / UNDER THE SURFACE <span className="kicker-rule"/></div><div className="section-head"><Reveal><h2 className="section-heading">Two positions.<br/><em>One balancing act.</em></h2></Reveal><p className="section-deck">The goal is to offset directional exposure. The challenge is what happens when the offset stops being perfect.</p></div><div className="mechanics-grid"><Reveal className="mechanic-card"><span className="mechanic-number">01 / HOLD</span><div className="mechanic-icon spot-icon"><span>↗</span></div><h3>Own the asset.</h3><p>Spot exposure moves with the market. Rising prices help; falling prices hurt.</p><div className="mechanic-bottom"><span className="spot-dot"/> LONG SPOT <span>POSITIVE DELTA</span></div></Reveal><Reveal className="mechanic-card" delay={.08}><span className="mechanic-number">02 / COUNTER</span><div className="mechanic-icon perp-icon"><span>↘</span></div><h3>Offset the move.</h3><p>A short perpetual position can counter spot price changes, but brings margin and funding risk.</p><div className="mechanic-bottom"><span className="perp-dot"/> SHORT PERP <span>NEGATIVE DELTA</span></div></Reveal><Reveal className="mechanic-card mechanic-card-special" delay={.16}><span className="mechanic-number">03 / OBSERVE</span><div className="mechanic-icon net-icon"><span>≈</span></div><h3>Track the residual.</h3><p>The closer the exposures match, the smaller the first-order directional effect. Not the total risk.</p><div className="mechanic-bottom"><span className="net-dot"/> NET EXPOSURE <span>ALWAYS MOVING</span></div></Reveal></div></div></section>
+    <section className="chart-section section-space shell"><div className="section-kicker"><span className="small-disc"/> 003 / THE VISUAL LANGUAGE <span className="kicker-rule"/></div><div className="section-head"><Reveal><h2 className="section-heading">Make the invisible<br/><em>impossible to ignore.</em></h2></Reveal><p className="section-deck">Our interface treats risk as the primary signal. Understand the structure before trusting any outcome.</p></div><Reveal><ExposureChart/></Reveal></section>
+    <section className="features-section section-space"><div className="shell"><div className="section-kicker"><span className="small-disc"/> 004 / BUILDING THE INSTRUMENT <span className="kicker-rule"/></div><div className="features-head"><Reveal><h2 className="display-heading">NOT ANOTHER<br/><span>YIELD DASHBOARD.</span></h2></Reveal><p>Designed as a decision system. Built to question assumptions, not decorate them.</p></div><div className="feature-grid"><Reveal className="feature-tile feature-large"><div className="feature-upper"><span>01 / INTERACTIVE</span><Icon name="pulse" size={24}/></div><div className="feature-orbit" aria-hidden="true"><div className="orbit-one"/><div className="orbit-two"/><div className="orbit-three"/><div className="orbit-core">Δ</div></div><div className="feature-lower"><span className="feature-number">A / 01</span><h3>Hedge Observatory</h3><p>An intuitive field of moving counterweights helps explain directional exposure and position balance.</p><Link href="/observatory" className="round-outline" aria-label="Explore the observatory"><Icon name="arrowUp"/></Link></div></Reveal><Reveal className="feature-tile" delay={.08}><div className="feature-upper"><span>02 / EXPLORATORY</span><Icon name="diagonal" size={22}/></div><div className="mini-chart" aria-hidden="true"><svg viewBox="0 0 360 140" fill="none"><path d="M0 93 C40 93 56 50 88 58S151 121 190 92 236 35 281 42 326 90 360 55" stroke="#C7FF91" strokeWidth="3"/><path d="M0 100C70 100 77 85 118 93S224 98 281 88 330 80 360 85" stroke="#73CEAA" strokeWidth="3" strokeDasharray="5 6"/></svg></div><div className="feature-lower"><span className="feature-number">B / 02</span><h3>Scenario Lab</h3><p>Stress-test price movements, hedge sizes, and funding assumptions in real time.</p><Link href="/risk-lab" className="round-outline" aria-label="Explore the risk lab"><Icon name="arrowUp"/></Link></div></Reveal><Reveal className="feature-tile" delay={.16}><div className="feature-upper"><span>03 / VERIFIABLE</span><Icon name="shield" size={22}/></div><div className="proof-pattern" aria-hidden="true"><span>DATA → EVIDENCE<br/>EVIDENCE → CONTEXT<br/>CONTEXT → DECISION</span></div><div className="feature-lower"><span className="feature-number">C / 03</span><h3>Evidence by design</h3><p>A clear line between simulated research, live observations, and verified on-chain execution.</p><Link href="/docs" className="round-outline" aria-label="Read documentation"><Icon name="arrowUp"/></Link></div></Reveal></div></div></section>
+    <section className="manifesto-section section-space shell"><div className="section-kicker"><span className="small-disc"/> 005 / OUR COMMITMENT <span className="kicker-rule"/></div><Reveal><div className="manifesto-statement"><div className="manifesto-mark">“</div><h2>Neutrality is not<br/>the <em>absence of risk.</em><br/>It&apos;s the discipline<br/>of <span>seeing it clearly.</span></h2></div></Reveal><div className="manifesto-bottom"><span>SOLNEUTRAL / V2</span><p>Research-led, risk-aware DeFi infrastructure in development. This preview does not accept deposits or execute trades.</p><Link href="/docs" className="button-dark">EXPLORE THE DOCUMENTATION <Icon name="arrowUp" size={18}/></Link></div></section>
+  </>;
 }

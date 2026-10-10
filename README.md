@@ -1,205 +1,143 @@
-# SolNeutral
- 
-**Stable yield. Zero directional risk.**
- 
-SolNeutral is a delta-neutral USDC vault built on Solana. It runs a long spot + short perpetual strategy on Drift Protocol, collecting funding fees to generate consistent yield regardless of market direction.
- 
-Live on Solana · Powered by Drift Protocol · Built by [Jayeoba Tunmise Paul](https://github.com/Paulos-ui)
- 
-🌐 **Live Dashboard:** https://solneutral-vault.vercel.app
-📦 **Smart Contract:** `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA`
-🔗 **Solscan:** https://solscan.io/account/Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA?cluster=devnet
+# SOLNEUTRAL / V2
+### The Hedge Observatory
 
----
- 
-## What is delta-neutral?
- 
-Most DeFi yield strategies are exposed to market direction — if SOL drops 30%, your vault drops with it. SolNeutral eliminates that risk entirely.
- 
-The vault holds two equal and opposite positions:
-- **Long spot SOL** — held via Jupiter/Orca
-- **Short SOL-PERP** — held on Drift Protocol
- 
-When SOL price moves, gains on one side cancel losses on the other. Net delta is always ~0. Profit comes entirely from **funding fees** — hourly payments from long position holders to short position holders on Drift.
- 
----
- 
-## Live Trading Proof
- 
-Real delta-neutral position opened on Drift Protocol mainnet:
- 
-| Detail | Value |
-|---|---|
-| Exchange | Drift Protocol (Solana mainnet) |
-| Market | SOL-PERP |
-| Side | Short |
-| Size | 0.03 SOL ($2.48) |
-| Entry price | $82.91 |
-| Leverage | 1x |
-| Position health | 97% |
-| Collateral | $2.64 USDC |
-| Liquidation price | $166.20 |
-| Date opened | April 1, 2026 |
-| Status | Active — collecting funding fees |
- 
-**Wallet:** `8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu`
-**Solscan:** https://solscan.io/account/8xqny651iFnNsnFeFqupNCzCc5QWqtSx3tfrLPkZGXeu
- 
----
- 
-## Performance (90-day simulation)
- 
-| Metric | Value |
-|---|---|
-| Gross APY | 19.84% |
-| Net APY | 14.81% |
-| Target APY | ≥ 10% ✅ |
-| Max drawdown | 0.04% |
-| Execution fees | $3.15 on $10,000 |
-| Positive funding hours | 92.6% |
-| Rebalance events | 269 |
-| Simulation period | 90 days |
- 
+> **The art of staying neutral.** The goal isn't to erase risk. It's to make risk visible.
 
-## On-chain Vault Proof (Devnet)
+SolNeutral V2 is an in-development, risk-intelligent Solana DeFi research experience. It explores the mechanics of long-spot / short-perpetual hedges, makes funding assumptions inspectable, and helps users understand how hedge drift affects price exposure. The current release is a polished, working **research preview**, not a custodial vault or live trading service.
 
-| Item | Address / TX |
-|---|---|
-| Program ID | `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA` |
-| Vault PDA | `3X8BTvktbRv2CLcLaortUrMa9s5Sk5qhuzKe47Y8GYhj` |
-| Vault USDC | `HDHkF3CqGNZwP6MubsvS9coxWgHU2s1SHKWzicUpDuRe` |
-| Initialize TX | `4hNrfUZ59j4jTF9...` |
-| Deposit TX | `2vd6kKLZeMqAQty...` |
+**Founder:** [Web3 supporter](https://x.com/instators) · **X:** [@instators](https://x.com/instators)  
+**Ecosystem:** Solana · **Builder audience:** Colosseum and Superteam Nigeria (independent project; no affiliation or endorsement implied)
 
-[View deposit on Solscan →](https://solscan.io/tx/2vd6kKLZeMqAQtyMWoCi6KHbvYLkNgJbGuESmLedcjzKitUHg1FTf7HW2c6QZG9aJ919SSV92HujBfKZKgxq8ZiD?cluster=devnet)
+## Why build SolNeutral?
 
----
- 
-## Architecture
- 
-```
-solneutral-vault/
-├── scripts/                      # Strategy simulation + proof of APY
-│   ├── simulate_trades.py        # 90-day delta-neutral simulation
-│   ├── solneutral_simulation.csv # 2,160 hourly data points
-│   └── solneutral_summary.json   # Performance metrics (feeds API)
-├── backend/                      # Flask REST API (10 endpoints)
-│   ├── app.py
-│   ├── requirements.txt
-│   └── Procfile
-├── frontend/                     # Next.js dashboard
-│   ├── app/
-│   │   ├── page.tsx              # Home — APY hero, strategy summary
-│   │   ├── dashboard/            # Live vault stats, PnL chart
-│   │   ├── deposit/              # Wallet connect, deposit/withdraw
-│   │   └── strategy/             # Strategy explainer, risk management
-│   ├── components/
-│   │   ├── Navbar.tsx
-│   │   ├── StatCard.tsx
-│   │   ├── PnLChart.tsx
-│   │   ├── PersonalPnL.tsx
-│   │   ├── WalletProvider.tsx
-│   │   └── WalletButton.tsx
-│   └── lib/
-│       ├── api.ts
-│       └── solana.ts
-├── vault/                        # Anchor smart contract
-│   └── solneutral/
-│       └── programs/solneutral/src/lib.rs
-└── docs/
-    └── SUBMISSION.md
-```
- 
----
- 
-## Smart Contract
- 
-**Program ID (devnet):** `Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA`
- 
-| Instruction | Description |
-|---|---|
-| `initialize` | Create vault state account |
-| `deposit` | Accept USDC, mint shares, start 90-day lock |
-| `withdraw` | Check lock, calculate yield, return payout |
-| `rebalance` | Log funding fees, update APY every 8h |
- 
----
- 
-## Tech Stack
- 
-| Layer | Technology |
-|---|---|
-| Blockchain | Solana |
-| Smart contract | Rust + Anchor 0.29.0 |
-| Perpetuals | Drift Protocol (SOL-PERP) |
-| Backend API | Python Flask — Railway |
-| Frontend | Next.js 15 + Tailwind CSS — Vercel |
-| Charts | Recharts |
-| Wallet | @solana/wallet-adapter |
-| Simulation | Python + Pandas + NumPy |
- 
----
- 
-## Getting Started
- 
+“Delta neutral” doesn't mean risk-free. A perfect-looking hedge can still lose money to funding reversals, leverage, liquidations, basis changes, fees, poor execution, or infrastructure failures. SolNeutral puts the explanatory tools **before** the yield headline.
+
+## What is actually working in this release
+
+| Feature | Current status |
+| --- | --- |
+| Bespoke "Hedge Observatory" visual identity | Implemented |
+| Animated interactive hedge field (60–140%) | Implemented — **conceptual** |
+| Educational spot/perpetual exposure chart | Implemented — **illustrative** |
+| Risk Lab with adjustable scenarios | Implemented — **deterministic simplified math** |
+| Server-side `POST /api/risk/scenario` | Implemented — input validation and bounded output |
+| `GET /api/status` | Implemented — honest status and capability flags |
+| Responsive layout, navigation, reduced-motion support | Implemented |
+| About / Field Manual / onboarding documentation | Implemented |
+| Guarded deposit entry point | Implemented — **deposits disabled** |
+| Live Solana / Drift data and transaction history | **Not integrated yet** |
+| Wallet connection, secure vault accounting, keeper | **Not implemented in V2 yet** |
+| AI analyst with sourced calculations | **Planned** |
+| Production contract audits or mainnet vault | **Not delivered** |
+
+No real vault TVL, live APY, user PnL, successful executed trades, or liquidity is claimed by this preview.
+
+## Start in under five minutes
+
+Requires **Node.js 22+** and npm. Commands use your normal Git Bash terminal.
+
 ```bash
-git clone https://github.com/Paulos-ui/solneutral-vault
-cd solneutral-vault
- 
-# Simulation
-cd scripts && pip install requests pandas numpy python-dotenv
-python simulate_trades.py
- 
-# Backend
-cd backend && pip install flask flask-cors python-dotenv gunicorn
-python app.py
- 
-# Frontend
-cd frontend && npm install && npm run dev
+cd frontend
+npm install
+npm run dev
 ```
- 
----
- 
-## Risk Management
- 
-| Parameter | Value |
-|---|---|
-| Max drawdown | 10% hard stop |
-| Max position size | 25% of vault |
-| Collateral buffer | 20% above liquidation |
-| Rebalance trigger | Every 8h or delta drift > 2% |
-| Lock period | 90 days rolling |
-| Performance fee | 20% on profits |
- 
----
- 
-## Roadmap
- 
-- [x] Strategy simulation — 19.84% gross APY proved
-- [x] Backend REST API — 10 endpoints on Railway
-- [x] Frontend dashboard — 4 pages on Vercel
-- [x] Wallet connect — Phantom + Solflare
-- [x] Anchor smart contract — deployed on Solana devnet
-- [x] Live Drift trade — SOL-PERP short active on mainnet
-- [x] Frontend → smart contract integration
-- [x] Mainnet vault deployment via Ranger Earn
-- [ ] Automated keeper for rebalancing
- 
----
- 
-## Hackathon
- 
-Built for **Ranger Build-A-Bear Hackathon** (Main Track) and **Superteam × HelpBnk March Challenge**.
- 
-See `docs/SUBMISSION.md` for full submission details.
- 
----
- 
+
+Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/about`, and `/docs`.
+
+### Run checks
+
+```bash
+npm run test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+> The ZIP is delivered without `node_modules` or a generated package lock, since dependency installation requires network access. Running `npm install` will generate `package-lock.json`. Commit that lockfile after confirming installation.
+
+### Test the research API
+
+```bash
+curl -X POST http://localhost:3000/api/risk/scenario \
+  -H 'Content-Type: application/json' \
+  -d '{"spotNotionalUsd":25000,"hedgeRatioPct":100,"priceMovePct":-18,"annualFundingPct":8,"days":30}'
+```
+
+This is the same bounded calculation as the visual simulator. Invalid inputs return HTTP `422`; malformed JSON returns `400`.
+
+## How it works / User guide
+
+1. **Start at the homepage.** Adjust the counterweight in the hedge field to see the basic effect of balancing long and short exposures.
+2. **Open the Observatory.** Inspect the same conceptual balance mechanism and the illustrative indexed exposure chart; click its legend to isolate series.
+3. **Open Risk Lab.** Choose a spot notional, hedge ratio, price shock, annualized funding assumption, and time horizon.
+4. **Study the decomposition.** The output separates spot price P/L, perpetual price P/L, funding effect, gross notional and residual delta.
+5. **Read the Field Manual.** Learn exactly what has been modeled, what has been omitted, and what must be built before real funds are at stake.
+
+## Simplified model
+
+Let **S** = USD notional of a long spot position, **h** = short perp hedge ratio (e.g. `1.0` for fully hedged), **m** = hypothetical spot price move, **f** = assumed annualized funding fraction, and **d** = number of days.
+
+```text
+spot price P/L   = S × m
+perp price P/L   = −S × h × m
+funding effect   = S × h × f × (d / 365)
+modeled total    = spot P/L + perp P/L + funding effect
+net delta (%)    = (1 − h) × 100
+```
+
+**Important:** This is intentionally not a deployable trading model. It does NOT model collateral, leverage, liquidation, margin health, borrow costs, basis, compounding, variable intra-period funding, position rebalancing, execution slippage, protocol fees, smart contract risk, or transaction failures. Funding payments can change direction. The results are **illustrative only**.
+
+## Architecture
+
+```text
+frontend/                      Next.js 16, React 19, TypeScript, Tailwind, Framer Motion
+  app/                         App Router pages and server endpoints
+    page.tsx                   Signature landing page
+    observatory/               Conceptual exposure field
+    risk-lab/                  Interactive deterministic model
+    about/                     Vision and provenance
+    docs/                      Field manual / user guide
+    deposit/                   Guarded disabled vault status
+    api/status/                Explicit preview-status endpoint
+    api/risk/scenario/         Validated scenario endpoint
+  components/                  Brand, motion, SVG instrument, chart and simulator
+  lib/scenario.ts              Shared pure, bounded calculations
+  tests/                       Scenario correctness and input boundary tests
+legacy/                        Archived V1 source — NOT RUN by V2
+  frontend-v1/                 Original V1 React/Next frontend
+  backend/                     Flask / historical simulation API
+  scripts/                     Historical research scripts and CSV
+  vault/                       Old incomplete Anchor source and associated artifacts
+  README_V1.md                 Original historical copy
+
+docs/                           Build roadmap, design system and migration decisions
+```
+
+The site can run on Vercel without Railway because its current APIs are stateless Next.js route handlers. **Continuous automated strategy execution must not be placed into request-limited serverless handlers without a separately designed keeper.**
+
+## Deploy to Vercel
+
+Push this directory to GitHub, then in Vercel **Import Project** and set **Root Directory** to `frontend`. Use framework preset **Next.js**, build command `npm run build`, and let Vercel detect the rest. The research preview requires no secret credentials.
+
+If replacing an existing deployment, don't redirect real-user deposit flows to this preview. Withdrawals from any earlier deployment must be separately safeguarded and not silently disabled without a migration plan.
+
+## Development roadmap
+
+**Now — V2 design foundation:** Brand system, observatory, interactions, studio, educational docs, safe preview deployment.  
+**Next — sourced intelligence:** Verified on-chain reads, Drift funding data, provenance, timestamping, caching/rate limiting, risk monitoring, data-integrity tests.  
+**Then — protocol engineering:** Explicit strategy specification, vault share accounting, collateral controls, privileged-role analysis, simulated adversarial testing, and independent review.  
+**Finally — AI and execution:** Explainable agent with calculations/source attribution, opt-in notifications, monitored execution only after comprehensive risk work.
+
+## Responsible framing & originality
+
+This is an upgrade of an **existing SolNeutral V1 concept**. The original project/source is retained under `legacy/` for provenance. Clearly disclose reused work when submitting to any hackathon; do not represent previously written code as fresh work within a new competition period.
+
+Inspired by ecosystem builder communities **Colosseum** and **Superteam Nigeria**, not presented as officially affiliated with either group. Founder attribution: **Web3 supporter (@instators)**.
+
+## Security
+
+No wallet connection or real-money vault functionality exists in this preview. Never commit API tokens, seed phrases, wallet keypairs, or `.env` credentials. Do not run or deploy the archived Anchor program without a separate security/consistency review: its prior source had mismatched advertised instructions and an unsuitable fixed-yield withdrawal mechanism.
+
 ## License
- 
-MIT — open source, free to use and build upon.
- 
----
- 
-*Built on Solana. Powered by Drift Protocol.*
-*Follow: [@Jayking](https://x.com/__official__1)*
+
+No open-source license is granted automatically by this README. Choose a license explicitly before public distribution.
