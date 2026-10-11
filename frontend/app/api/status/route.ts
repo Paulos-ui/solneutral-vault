@@ -8,7 +8,7 @@ export function GET() {
   const tradingEnabled = process.env.NEXT_PUBLIC_ENABLE_DEVNET_TRADING !== 'false';
   return NextResponse.json({
     project: 'SolNeutral',
-    version: '6.1.0-preview',
+    version: '7.0.0-preview',
     backend: 'nextjs-vercel-functions',
     mode: 'devnet-trading-and-research',
     walletConnectionAvailable: true,
@@ -20,6 +20,8 @@ export function GET() {
     privateAiConfigured: Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_MODEL && process.env.AI_DEMO_ACCESS_TOKEN && process.env.AI_DEMO_ACCESS_TOKEN.length >= 20),
     healthEndpoint: '/api/health',
     fundingEndpoint: '/api/market/funding',
+    solReferenceChartEndpoint: '/api/market/sol-chart?interval=5m',
+    solReferenceVenue: 'Coinbase Exchange SOL/USD spot',
     timestamp: new Date().toISOString(),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

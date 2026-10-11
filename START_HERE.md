@@ -1,17 +1,15 @@
-# SolNeutral V6.1 — Backend & Drift setup
+# SolNeutral V7.1 — Install and test
 
-Founder: **Web3 supporter** · X: **@instators**
+Founder: **Web3 supporter** · X **@instators**.
 
-## Update the EXISTING repository (Git Bash)
-
-Download `SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip` to your Windows Desktop.
+Save `SolNeutral_V7_1_Live_Chart_Collateral_Repair_COMPLETE.zip` to your Windows Desktop. In Git Bash:
 
 ```bash
 cd "/mnt/c/Users/MY PC/Desktop/solneutral-vault"
-unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip"
+unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V7_1_Live_Chart_Collateral_Repair_COMPLETE.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V7_1_Live_Chart_Collateral_Repair_COMPLETE.zip"
 ```
 
-## Validate and push
+Test before pushing:
 
 ```bash
 cd frontend
@@ -19,33 +17,15 @@ npm install
 npm test && npm run typecheck && npm run build
 ```
 
-Only if all succeed:
+Only if successful:
 
 ```bash
 cd ..
 git add -A
-git commit -m "feat: backend diagnostics and guided Drift devnet setup"
+git commit -m "feat: V7.1 live SOL chart and guarded Drift collateral"
 git push origin HEAD
 ```
 
-## Configure Vercel without deleting the project
+Keep existing Vercel project, Root Directory `frontend`, and devnet environment variables. Confirm `/api/market/sol-chart?interval=5m` after redeploy. Connect a dedicated **devnet** wallet and verify market/Drift account before any signed test transaction.
 
-In **Vercel > Existing SolNeutral Project > Settings > Build and Deployment**, set **Root Directory = `frontend`**. In **Settings > Environment Variables**, configure:
-
-- `NEXT_PUBLIC_DEVNET_RPC_URL = https://api.devnet.solana.com`
-- `NEXT_PUBLIC_ENABLE_DEVNET_TRADING = true`
-- Optional `SOLANA_RPC_URL`: private **mainnet** RPC, used for read-only data only.
-- Optional AI: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_DEMO_ACCESS_TOKEN` (private server-side secrets).
-
-Select Production and redeploy. The existing backend runs automatically as Next.js API routes on Vercel; the archived Flask/Railway backend is not involved.
-
-Test:
-
-- `https://solneutral-vault.vercel.app/api/status`
-- `https://solneutral-vault.vercel.app/api/health`
-- `https://solneutral-vault.vercel.app/settings` → **Test backend & RPC**
-- `https://solneutral-vault.vercel.app/trade` → **Initialize Drift Account** when a connected devnet wallet has no verified Drift account.
-
-See `docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md` for a more detailed walkthrough. Never commit `.env.local`, private tokens, private keypairs, or wallet seed phrases.
-
-**Devnet only. No real-money pooled vault deposits.**
+**Important:** Your previous failed deposit may have left wSOL in **your wallet**. Trade Lab → Collateral → **Unwrap wSOL** will close the **entire canonical wSOL associated token account**, returning its entire wallet-owned balance as native SOL and reclaiming rent. Verify that amount first. It cannot withdraw SOL already inside Drift. No mainnet/vault deposits enabled. Current market support cannot be guaranteed until live network checks pass.

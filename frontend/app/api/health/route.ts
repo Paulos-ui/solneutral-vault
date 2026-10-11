@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     project: 'SolNeutral',
-    release: '6.1-backend-and-drift-onboarding',
+    release: '7.0-market-intelligence-and-private-ai',
     backend: 'online',
     environment: process.env.VERCEL_ENV || 'local',
     verifiedAt: new Date().toISOString(),
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       mainnetResearchRpc: { state: mainnet, configured: Boolean(process.env.SOLANA_RPC_URL), note: 'Read-only research, separate from devnet trading.' },
       aiNarration: { state: configuredAi ? 'configured' : 'optional_not_configured' },
       fundingData: { state: 'external', endpoint: '/api/market/funding' },
+      solReferenceChart: { state: 'external', endpoint: '/api/market/sol-chart?interval=5m', venue: 'Coinbase SOL/USD spot, separate from Drift perp' },
     },
     note: 'A healthy web API does not prove that a Drift account exists or that the external funding indexer is available.',
   }, { headers: { 'Cache-Control': 'no-store' } });

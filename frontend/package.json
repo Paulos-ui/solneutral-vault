@@ -1,6 +1,6 @@
 {
   "name": "solneutral",
-  "version": "6.0.0-preview.0",
+  "version": "7.1.0-devnet.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

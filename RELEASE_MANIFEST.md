@@ -1,10 +1,13 @@
-# SolNeutral V6.1 — cumulative release
+# SolNeutral V7.1 — Live Chart & Safer Devnet Collateral
 
-- Maintains all V6 navigation, dashboard, AI, Docs, Observatory and Drift devnet features.
-- New: Next.js `/api/health` diagnostics with optional fixed-source devnet/mainnet RPC genesis-hash probes. No secrets or private RPC URLs are returned.
-- Corrected: `/api/status` reports the actual V6.1 feature state rather than outdated V3 flags.
-- New: Settings > Backend & data services checker.
-- Improved: Trade Lab prominently surfaces wallet/network/Drift User account initialization, opens the Account pane when an account is verified missing, and preserves wallet approval/testnet controls.
-- New: detailed Vercel environment mapping and setup guide.
-- No new dependencies, no Railway backend migration, no new mainnet vault functionality.
-- Validation: 53 local deterministic tests passed; TypeScript and CSS source parsing passed. Full Next.js build and live Drift wallet transaction **not run** in this environment.
+- Full cumulative V2–V7.1 repository-root release (no nested wrapper directory).
+- Original premium wallet-first dashboard, Observatory, Risk Lab, AI Analyst, Docs and Trade Lab retained.
+- Trade Lab SOL/USD Coinbase spot candlestick chart (1m/5m/15m/1h/6h/1d) and `/api/market/sol-chart`; observation only, **not** a Drift-perp mark/execution feed.
+- Corrected handling of failed SOL collateral deposits: dynamically validate actual wSOL spot market by mint and Drift program owner **before** wallet wrapping; do not assume market index 1.
+- Reuse available wallet-owned wSOL; only wrap a deficit. Explicit wallet-signed **Unwrap wSOL** action closes the user's canonical wSOL ATA, converting its entire balance to SOL (plus reclaimed rent).
+- Deposits and withdrawals require Drift devnet account verification, wallet signature, and on-chain confirmation; unsupported devnet collateral fails closed.
+- Optional Claude integration remains server-side and access-token gated. No private credentials embedded in ZIP.
+- Experimental Anchor vault in `vault/` remains uncompiled, unaudited and disconnected from mainnet deposits.
+- **Checks:** 63 Node deterministic tests pass; ZIP CRC / root layout checked. Full `npm run typecheck` / Next.js production build and live signed devnet transactions **not verified** in this environment.
+
+See [`docs/V7_1_COLLATERAL_AND_CHART.md`](docs/V7_1_COLLATERAL_AND_CHART.md) for recovery and caveats.

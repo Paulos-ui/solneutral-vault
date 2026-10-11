@@ -5,14 +5,14 @@
  */
 import type { Connection } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
-import { prepareWrappedSolDeposit, ensureWrappedSolDestination } from './native-sol';
+import { prepareWrappedSolDeposit, ensureWrappedSolDestination, unwrapWalletWsol } from './native-sol';
+import { chooseWrappedSolMarket, meaningfulDriftError } from './collateral-guards';
 import {
   assertDevnetGenesis, boundedLimitPrice, DEVNET_GENESIS_HASH,
-  DRIFT_SOL_PERP_MARKET_INDEX, DRIFT_SOL_SPOT_MARKET_INDEX,
   validateDevnetAmount,
 } from './devnet-execution';
 
-export type ExecutionAction = 'initialize' | 'deposit' | 'withdraw' | 'long' | 'short' | 'cancel';
+export type ExecutionAction = 'initialize' | 'deposit' | 'withdraw' | 'long' | 'short' | 'cancel' | 'unwrap';
 export type ExecutionResult = { signature: string; confirmed: boolean; description: string; userAccount: string };
 
 async function openDevnetClient(connection: Connection, wallet: AnchorWallet) {
@@ -62,6 +62,19 @@ async function waitForVerifiedSignature(connection: Connection, signature: strin
   return Boolean(status && !status.err && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized'));
 }
 
+/** Verify on-chain wSOL market existence, ownership and mint before wallet funds move. */
+async function verifiedWrappedSolMarket(connection: Connection, client: Awaited<ReturnType<typeof openDevnetClient>>['client']) {
+  const { NATIVE_MINT } = await import('@solana/spl-token');
+  const markets = client.getSpotMarketAccounts();
+  const market = chooseWrappedSolMarket(markets);
+  if (!market.mint.equals(NATIVE_MINT)) throw new Error('The selected collateral market is not native wrapped SOL.');
+  const account = await connection.getAccountInfo(market.pubkey, 'confirmed');
+  if (!account || !account.owner.equals(client.program.programId)) {
+    throw new Error('Drift wSOL spot market is missing or owned by a different program on devnet. Deposit and withdrawal disabled.');
+  }
+  return market.marketIndex;
+}
+
 /** All actions require a connected wallet, devnet RPC, small validated sizes and separate user confirmation. */
 export async function executeDriftDevnetAction(
   connection: Connection,
@@ -69,7 +82,13 @@ export async function executeDriftDevnetAction(
   action: ExecutionAction,
   amountText: string,
 ): Promise<ExecutionResult> {
-  const units = action === 'initialize' || action === 'cancel' ? null : validateDevnetAmount(action, amountText);
+  const units = action === 'initialize' || action === 'cancel' || action === 'unwrap' ? null : validateDevnetAmount(action, amountText);
+  // Wallet-owned wSOL recovery does not need Drift market data or even a Drift User account.
+  if (action === 'unwrap') {
+    const outcome = await unwrapWalletWsol(connection, wallet);
+    const confirmed = await waitForVerifiedSignature(connection, outcome.signature);
+    return {signature:outcome.signature, confirmed, description:`Returned ${Number(outcome.unwrappedLamports)/1e9} wSOL to native devnet SOL (entire wallet token account closed).`,userAccount:'Not a Drift transaction'};
+  }
   const { client, sdk, config } = await openDevnetClient(connection, wallet);
   const programId = new (await import('@solana/web3.js')).PublicKey(config.DRIFT_PROGRAM_ID);
   try {
@@ -81,6 +100,22 @@ export async function executeDriftDevnetAction(
     if (account && !account.owner.equals(programId)) throw new Error('Invalid Drift user account owner.');
     if (!account && action !== 'initialize') throw new Error('Initialize your Drift devnet account before sending funds or placing orders.');
     if (account && action === 'initialize') throw new Error('Drift account already exists; no need to initialize it again.');
+    if (account && action !== 'initialize') {
+      if (!(await client.addUser(0))) throw new Error('Drift subaccount exists but its state could not be loaded. Please retry.');
+    }
+    // Validate market BEFORE preparing any wallet-owned wSOL, preventing stranded
+    // collateral when the selected spot market does not exist on Drift devnet.
+    const spotIndex = action === 'deposit' || action === 'withdraw'
+      ? await verifiedWrappedSolMarket(connection, client) : null;
+    // Resolve the actual subscribed SOL perpetual market rather than assuming
+    // a devnet index that may have changed with deployments/configuration.
+    const perpSelection = action === 'long' || action === 'short' || action === 'cancel'
+      ? client.getMarketIndexAndType('SOL-PERP') : undefined;
+    const perpIndex = perpSelection?.marketIndex;
+    if ((action === 'long' || action === 'short' || action === 'cancel') &&
+        (perpIndex === undefined || !client.getPerpMarketAccount(perpIndex))) {
+      throw new Error('SOL-PERP is not currently subscribed on the selected Drift devnet program. Trading is disabled; no transaction was sent.');
+    }
     let signature: string;
     let description: string;
     if (action === 'initialize') {
@@ -89,28 +124,34 @@ export async function executeDriftDevnetAction(
     } else if (action === 'deposit') {
       const { tokenAccount } = await prepareWrappedSolDeposit(connection, wallet, units!);
       try {
-        signature = await client.deposit(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, tokenAccount, 0);
+        signature = await client.deposit(new sdk.BN(units!.toString()), spotIndex!, tokenAccount, 0);
       } catch (error) {
-        throw new Error(`Wrapped SOL was prepared in your wallet, but the separate Drift deposit did not finish. Your wSOL remains in your associated token account. ${error instanceof Error ? error.message : 'Check the devnet explorer.'}`);
+        throw new Error(`Drift did not confirm the collateral deposit. Any wSOL prepared in your wallet remains yours and can be unwrapped in the Collateral tab. ${meaningfulDriftError(error)}`);
       }
-      description = 'Deposited wSOL collateral into your personal Drift devnet account';
+      description = 'Deposited verified wSOL collateral into your personal Drift devnet account';
     } else if (action === 'withdraw') {
       // reduceOnly=true: never create a spot borrow to fund a withdrawal.
+      // Fail early if account has no SOL deposit balance. Protocol margin rules
+      // may still prevent the requested amount even when balance is sufficient.
+      const available = client.getUser(0).getTokenAmount(spotIndex!);
+      if (!available || BigInt(available.toString()) < units!) {
+        throw new Error('Your Drift account does not have this much deposited wSOL. No withdrawal was sent.');
+      }
       const { tokenAccount } = await ensureWrappedSolDestination(connection, wallet);
-      signature = await client.withdraw(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, tokenAccount, true, 0);
+      signature = await client.withdraw(new sdk.BN(units!.toString()), spotIndex!, tokenAccount, true, 0);
       description = 'Withdrew wSOL collateral to your wallet token account (unwrap separately to receive native SOL)';
     } else if (action === 'cancel') {
-      signature = await client.cancelOrders(sdk.MarketType.PERP, DRIFT_SOL_PERP_MARKET_INDEX);
+      signature = await client.cancelOrders(sdk.MarketType.PERP, perpIndex!);
       description = 'Requested cancellation of outstanding SOL-PERP devnet orders';
     } else {
-      const oracle = client.getOracleDataForPerpMarket(DRIFT_SOL_PERP_MARKET_INDEX);
+      const oracle = client.getOracleDataForPerpMarket(perpIndex!);
       const rawPrice = BigInt(oracle.price.toString());
       const cap = boundedLimitPrice(rawPrice, action);
-      const market = client.getPerpMarketAccount(DRIFT_SOL_PERP_MARKET_INDEX);
+      const market = client.getPerpMarketAccount(perpIndex!);
       if (!market) throw new Error('SOL-PERP market unavailable on devnet.');
       const params = sdk.getLimitOrderParams({
         marketType: sdk.MarketType.PERP,
-        marketIndex: DRIFT_SOL_PERP_MARKET_INDEX,
+        marketIndex: perpIndex!,
         direction: action === 'long' ? sdk.PositionDirection.LONG : sdk.PositionDirection.SHORT,
         baseAssetAmount: new sdk.BN(units!.toString()),
         price: new sdk.BN(cap.toString()),
@@ -123,6 +164,8 @@ export async function executeDriftDevnetAction(
     }
     const confirmed = await waitForVerifiedSignature(connection, signature);
     return { signature, confirmed, description, userAccount: userId.toBase58() };
+  } catch (error) {
+    throw new Error(meaningfulDriftError(error));
   } finally {
     await client.unsubscribe().catch(() => undefined);
   }

@@ -1277,3 +1277,40 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
 .sn-health-section{grid-column:1/-1}.sn-health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:20px 0}.sn-health-grid>div{border:1px solid #294c37;border-radius:8px;background:#11291c;padding:14px;min-width:0}.sn-health-grid span{display:block;font-size:10px;color:#97b69c}.sn-health-grid strong{display:block;font-size:12px;color:#d3ffab;margin-top:9px;overflow-wrap:anywhere}.sn-health-actions{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.sn-health-actions .sn-inline-link{font-size:11px}
 @media(max-width:850px){.sn-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.sn-v61-setup-banner{align-items:stretch;flex-direction:column}.sn-v61-setup-primary{width:100%}.sn-health-actions{align-items:stretch}.sn-health-grid{gap:7px}.sn-health-grid>div{padding:11px}}
+
+/* SolNeutral V7 | functional SOL/USD reference chart within Trade Lab */
+.sn-v7-market-context{display:grid;grid-template-columns:minmax(0,1fr) 225px;gap:12px;align-items:stretch;margin:12px 0}
+.sn-v7-chart,.sn-v7-market-clarity{border:1px solid #315440;border-radius:13px;background:linear-gradient(130deg,#10271b,#091812);min-width:0}
+.sn-v7-chart{overflow:hidden}
+.sn-v7-chart-head{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 17px;gap:12px;flex-wrap:wrap}
+.sn-v7-pair{display:flex;align-items:center;gap:9px}.sn-v7-coin{font-size:20px;color:#b9fb9d}.sn-v7-pair strong{font-size:13px;color:#f0f6dc;display:block;letter-spacing:.02em}.sn-v7-pair small{font-size:10px;color:#8eaa92;line-height:1.4}
+.sn-v7-quote{display:flex;gap:12px;align-items:baseline;margin-top:9px}.sn-v7-quote strong{font-size:clamp(21px,2.4vw,31px);letter-spacing:-.04em}.sn-v7-quote span{font-size:11px;color:#9cbb9f}.sn-v7-quote span.up{color:#81e3a3}.sn-v7-quote span.down{color:#eda28a}
+.sn-v7-chart-controls{display:flex;align-items:flex-end;flex-direction:column;gap:9px}.sn-v7-chart-intervals{display:flex;align-items:center;gap:2px;border:1px solid #31503c;padding:3px;border-radius:7px}.sn-v7-chart-intervals button{font-size:10px;font-weight:700;color:#96ae9a;padding:6px 7px;border-radius:5px}.sn-v7-chart-intervals button.active{background:#265137;color:#d3ffbe}.sn-v7-chart-status{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#acbdad}.sn-v7-chart-status.observed:before{content:'● ';color:#83f2a2}.sn-v7-chart-status.stale{color:#e6bb83}.sn-v7-chart-status.unavailable{color:#e9a093}
+.sn-v7-chart-body{padding:0 12px 5px 13px;position:relative}.sn-v7-chart-body svg{display:block;width:100%;height:clamp(205px,28vh,320px)}.sn-v7-ohlc{display:flex;gap:13px;flex-wrap:wrap;padding:7px 0 3px;font-size:9px;color:#8eb69c;min-height:25px}.sn-v7-ohlc b{color:#dcebd6;font-weight:700}.sn-v7-ohlc>span:last-child{margin-left:auto;color:#9eb4a1}.sn-v7-gridline{stroke:#426048;stroke-width:.6;opacity:.42;stroke-dasharray:4 6}.sn-v7-crosshair{stroke:#d1ffd0;stroke-width:.8;stroke-dasharray:4 3;opacity:.5}.sn-v7-price-label,.sn-v7-time-label{fill:#8da894;font-size:10px;font-family:ui-monospace,monospace}.sn-v7-chart-empty{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;color:#e8f5db;text-align:center}.sn-v7-chart-empty p{color:#9eb7a2;font-size:11px;max-width:350px;line-height:1.6}.sn-v7-chart-empty button{background:#244b32;border-radius:7px;padding:8px 16px;color:#d6fbbd;font-size:11px}
+.sn-v7-chart-foot{padding:11px 15px;border-top:1px solid #254735;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;color:#8ba692;font-size:9px;letter-spacing:.015em}.sn-v7-chart-foot a{color:#c5fbb0;text-decoration:underline;text-underline-offset:3px}
+.sn-v7-market-clarity{padding:17px 16px;display:flex;flex-direction:column;gap:13px}.sn-v7-market-clarity>span{font-size:9px;letter-spacing:.13em;font-weight:700;color:#a6dea7}.sn-v7-market-clarity h3{font-size:19px;line-height:1.15;letter-spacing:-.03em;color:#e8f5dc;margin:0}.sn-v7-market-clarity p{font-size:11px;line-height:1.6;color:#a4b9a5;margin:0}.sn-v7-market-clarity p strong{color:#e1f0c6}.sn-v7-market-clarity>div{border-top:1px solid #2a4b35;padding-top:10px;font-size:11px;color:#c3d3bd}.sn-v7-market-clarity>div strong{font-size:10px;color:#ccfa95;margin-right:12px}
+@media(max-width:1170px){.sn-v7-market-context{grid-template-columns:1fr}.sn-v7-market-clarity{display:none}}
+@media(max-width:560px){.sn-v7-chart-head{padding:12px}.sn-v7-chart-controls{align-items:flex-start}.sn-v7-chart-foot{justify-content:flex-start}.sn-v7-ohlc{gap:8px}.sn-v7-chart-body svg{height:210px}.sn-v7-market-context{margin:9px 0}}
+
+/* V7 keeps the order ticket and live reference chart side-by-side, not separated by scrolling. */
+.sn-v7-trade-workspace{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(320px,.9fr);gap:12px;align-items:start}
+.sn-v7-trade-workspace>.sn-v7-market-context{display:block;margin:0}
+.sn-v7-trade-workspace .sn-v7-market-clarity{display:none}
+.sn-v7-trade-order-column{min-width:0}
+.sn-v7-trade-order-column .sn-v6-trade-grid{grid-template-columns:minmax(0,1fr)}
+.sn-v7-trade-order-column .sn-v6-ticket{padding:16px}
+.sn-v7-trade-order-column .sn-v6-trade-side{grid-template-columns:1fr 1fr}
+.sn-v7-trade-order-column .sn-v6-side-card{padding:14px}
+@media(max-width:1000px){.sn-v7-trade-workspace{grid-template-columns:1fr}.sn-v7-trade-order-column .sn-v6-trade-side{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.sn-v7-trade-order-column .sn-v6-trade-side{grid-template-columns:1fr}}
+
+/* V7.1 collateral rescue and market-aware execution, matching the Trade Lab shell */
+.sn-v8-collateral-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.sn-v8-collateral-modes button{min-width:0;white-space:normal;padding:12px 6px;font-size:11px}
+.sn-v8-collateral-modes button.active{color:#dcffc7;background:#173e29;border-color:#91ffb7}
+.sn-v8-wsol-context{margin:8px 0 15px;padding:13px 15px;border:1px solid #305f46;background:linear-gradient(135deg,#143324,#0e2017);border-radius:9px}
+.sn-v8-wsol-context>div{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.sn-v8-wsol-context span{font-size:9px;letter-spacing:.09em;color:#8fb7a0;font-weight:700}
+.sn-v8-wsol-context strong{font-size:15px;color:#d4ffbb}
+.sn-v8-wsol-context p{font-size:11px;line-height:1.6;color:#bed0ba;margin:9px 0 0}
+@media(max-width:450px){.sn-v8-collateral-modes button{font-size:9px;padding:10px 4px}}
