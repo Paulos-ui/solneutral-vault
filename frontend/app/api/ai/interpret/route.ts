@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildResearchBrief, isValidQuestion } from '@/lib/analyst';
+import { parseChatHistory, type ChatMessage } from '@/lib/ai-chat';
 import { validatePositionRiskInput } from '@/lib/position-risk';
 import { validFundingEvidence, type FundingEvidence, type IntelligenceSnapshot } from '@/lib/intelligence';
 export const runtime='nodejs';
@@ -19,7 +20,7 @@ export async function POST(req:NextRequest){
   const p=payload as Record<string,unknown>; const snapshot=p.snapshot as IntelligenceSnapshot;
   if(!snapshot||!validatePositionRiskInput(snapshot.assumptions)||!validFundingEvidence(snapshot.funding)||!isValidQuestion(p.question))throw Error('invalid');
   const research=buildResearchBrief(snapshot,p.question);
-  const history=Array.isArray(p.history)?p.history.slice(-6).filter((m:unknown)=>m&&typeof m==='object'&&('role' in m)&&('content' in m)&&(((m as {role:unknown}).role==='user')||((m as {role:unknown}).role==='assistant'))&&typeof (m as {content:unknown}).content==='string'&&((m as {content:string}).content.length<=1200)).map((m:{role:'user'|'assistant';content:string})=>({role:m.role,content:m.content})):[];
+  const history: ChatMessage[] = parseChatHistory(p.history);
   const upstream=await fetch('https://api.anthropic.com/v1/messages',{
    method:'POST',cache:'no-store',signal:AbortSignal.timeout(20_000),
    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},

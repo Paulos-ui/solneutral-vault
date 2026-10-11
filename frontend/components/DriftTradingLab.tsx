@@ -6,15 +6,16 @@ import { ConnectWallet } from './ConnectWallet';
 import { SolPriceChart } from './SolPriceChart';
 import { inspectWrappedSol } from '@/lib/native-sol';
 import { Icon } from './Icons';
-import { assertDevnetGenesis, explorerTransactionUrl, validateDevnetAmount } from '@/lib/devnet-execution';
+import { assertDevnetGenesis, decimalToUnits, explorerTransactionUrl, validateDevnetAmount } from '@/lib/devnet-execution';
+import { reconcileUsdcMovement, type UsdcMovementProof } from '@/lib/collateral-reconciliation';
 import { executeDriftDevnetAction, inspectDriftDevnetAccount, inspectDriftDevnetUsdc, inspectDriftDevnetUsdcReadiness, type DriftUsdcReadiness, type CollateralAsset, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
 
 type ConnectionState = 'idle'|'checking'|'verified'|'unavailable';
 type DeskTab = 'trade'|'collateral'|'account'|'orders';
 const ACTIONS = [
   { id: 'initialize', label: 'Initialize', tagline: 'Open a Drift user subaccount' },
-  { id: 'deposit', label: 'Deposit', tagline: 'Wrap devnet SOL → deposit wSOL to Drift' },
-  { id: 'withdraw', label: 'Withdraw', tagline: 'Drift wSOL collateral → your wallet token account' },
+  { id: 'deposit', label: 'Deposit', tagline: 'Deposit matching devnet USDC into Drift' },
+  { id: 'withdraw', label: 'Withdraw', tagline: 'Withdraw matching devnet USDC to your wallet' },
   { id: 'unwrap', label: 'Unwrap wSOL', tagline: 'Return all wallet-owned wSOL to native SOL' },
   { id: 'long', label: 'Long', tagline: 'SOL-PERP bounded resting limit order' },
   { id: 'short', label: 'Short', tagline: 'SOL-PERP bounded resting limit order' },
@@ -32,6 +33,7 @@ export function DriftTradingLab() {
   const { connection }=useConnection();
   const { publicKey, connected }=useWallet();
   const signer=useAnchorWallet();
+  const walletAddress=publicKey?.toBase58() ?? null;
   const [network,setNetwork]=useState<ConnectionState>('idle');
   const [genesis,setGenesis]=useState('');
   const [balance,setBalance]=useState<number|null>(null);
@@ -51,6 +53,8 @@ export function DriftTradingLab() {
   const [pendingStep,setPendingStep]=useState('');
   const [error,setError]=useState('');
   const [result,setResult]=useState<ExecutionResult|null>(null);
+  const [collateralProof,setCollateralProof]=useState<UsdcMovementProof|null>(null);
+  const [collateralBaseline,setCollateralBaseline]=useState<{snapshot:DriftUsdcReadiness;action:'deposit'|'withdraw';amountRaw:string;wallet:string}|null>(null);
   const enableExecution = process.env.NEXT_PUBLIC_ENABLE_DEVNET_TRADING !== 'false';
   const current = ACTIONS.find(a=>a.id===action)!;
   const noAmount=action==='initialize'||action==='cancel'||action==='unwrap';
@@ -77,6 +81,8 @@ export function DriftTradingLab() {
     }catch(err){setNetwork('unavailable');setError(readableError(err));}
   },[connected,publicKey,signer,connection]);
   useEffect(()=>{void refresh();},[refresh]);
+  // Never show a previous wallet's transaction evidence under a newly connected wallet.
+  useEffect(()=>{setResult(null);setCollateralProof(null);setCollateralBaseline(null);},[walletAddress]);
   // First visit: show the required setup action immediately if the verified
   // account is missing. Do not repeatedly redirect when the user switches tabs.
   useEffect(() => {
@@ -102,25 +108,67 @@ export function DriftTradingLab() {
       setUsdcChecking(false);
     }
   }
-  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':collateralAsset==='usdc'?'5':'0.05');}
+  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setCollateralProof(null);setCollateralBaseline(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':collateralAsset==='usdc'?'5':'0.05');}
   async function submit(){
     if(!ready||!signer) return;
     if(!approved){setError('Review the action and tick the acknowledgement before signing.');return;}
     if(!noAmount){try{if((action==='deposit'||action==='withdraw')&&collateralAsset==='usdc'){const n=Number(amount);if(!Number.isFinite(n)||n<=0||n>100||!/^(?:\d+)(?:\.\d{1,6})?$/.test(amount))throw Error('Enter 0–100 test USDC, up to six decimals.');}else validateDevnetAmount(action as 'deposit'|'withdraw'|'long'|'short',amount);}catch(err){setError(readableError(err));return;}}
-    setBusy(true);setError('');setResult(null);setApproved(false);
+    setBusy(true);setError('');setResult(null);setCollateralProof(null);setCollateralBaseline(null);setApproved(false);
     setPendingStep('Checking devnet and preparing Drift transaction…');
     try{
+      const usdcAction = (action === 'deposit' || action === 'withdraw') && collateralAsset === 'usdc';
+      // An independent BEFORE snapshot is mandatory for USDC reconciliation.
+      // Refuse to sign if the market, mint or user balance cannot be read.
+      const before = usdcAction ? await inspectDriftDevnetUsdcReadiness(connection,signer) : null;
       const receipt=await executeDriftDevnetAction(connection,signer,action,amount,collateralAsset);
       setResult(receipt);
-      setPendingStep(receipt.confirmed?'Confirmed on devnet. Read the signature below.':'Submitted; network confirmation is still unverified.');
+      if (usdcAction && before && receipt.confirmed && publicKey && (action === 'deposit' || action === 'withdraw')) {
+        setCollateralBaseline({snapshot:before,action,amountRaw:decimalToUnits(amount,6).toString(),wallet:publicKey.toBase58()});
+      }
+      setPendingStep(receipt.confirmed?'Transaction signature confirmed. Rechecking chain balances…':'Transaction submitted; network confirmation is still unverified.');
       await refresh();
-      // New balance must be checked against the chain separately after the
-      // receipt, rather than inferred from the transaction submission.
-      if ((action === 'deposit' || action === 'withdraw') && collateralAsset === 'usdc') {
-        await checkUsdcCollateral();
+      if (usdcAction && before && receipt.confirmed && (action === 'deposit' || action === 'withdraw')) {
+        try {
+          // Rebuild a new client and re-read both token accounts at confirmed
+          // commitment, rather than trusting the pre-transaction SDK cache.
+          const after = await inspectDriftDevnetUsdcReadiness(connection,signer);
+          setUsdcReadiness(after);
+          setUsdcBalance(BigInt(after.walletAmount));
+          setUsdcMint(after.mint);
+          const proof = reconcileUsdcMovement(before,after,action,decimalToUnits(amount,6));
+          setCollateralProof(proof);
+          setPendingStep(proof.status === 'verified'
+            ? 'Signature confirmed and matching on-chain collateral changes observed.'
+            : 'Signature confirmed, but collateral changes are not reconciled. Check the balances again before proceeding.');
+        } catch (verificationError) {
+          setCollateralProof({status:'unverified',walletDeltaRaw:null,driftDeltaRaw:null,
+            detail:`Fresh collateral balance read failed: ${readableError(verificationError)}`});
+          setPendingStep('Signature confirmed. Collateral balance proof is unavailable; retry the read-only check.');
+        }
+      } else if (receipt.confirmed) {
+        setPendingStep('Transaction confirmed. For limit orders, a confirmation does not establish a fill.');
       }
     }catch(err){setError(readableError(err));setPendingStep('Action was not verified as successful.');}
     finally{setBusy(false);}
+  }
+  async function recheckCollateralProof() {
+    if (!collateralBaseline || !signer || !publicKey ||
+        collateralBaseline.wallet !== publicKey.toBase58() || network !== 'verified') return;
+    setUsdcChecking(true);
+    try {
+      const after=await inspectDriftDevnetUsdcReadiness(connection,signer);
+      setUsdcReadiness(after);
+      setUsdcBalance(BigInt(after.walletAmount));
+      setUsdcMint(after.mint);
+      const proof=reconcileUsdcMovement(
+        collateralBaseline.snapshot,after,collateralBaseline.action,BigInt(collateralBaseline.amountRaw));
+      setCollateralProof(proof);
+      setPendingStep(proof.status === 'verified'
+        ? 'Fresh confirmed-chain wallet and Drift USDC balance changes reconciled.'
+        : 'Transaction receipt exists, but fresh token and Drift balances still do not reconcile.');
+    } catch (reason) {
+      setCollateralProof({status:'unverified',detail:readableError(reason),walletDeltaRaw:null,driftDeltaRaw:null});
+    } finally {setUsdcChecking(false);}
   }
   const tabs: {id:DeskTab;label:string;action:ExecutionAction}[]=[
     {id:'trade',label:'Trade',action:'long'},
@@ -176,10 +224,11 @@ export function DriftTradingLab() {
        {connected&&network==='verified'&&driftAccount&&!driftAccount.exists&&tab!=='account'&&<p className="trade-warning">A Drift account is required. <button type="button" className="sn-v61-inline-setup" onClick={() => selectTab('account')}>Open account setup →</button></p>}
        {error&&<p className="trade-warning" role="alert">{error}</p>}
        {pendingStep&&<p className="trade-progress" role="status">{pendingStep}</p>}
-       {result&&<div className="trade-receipt"><strong>{result.confirmed?'Confirmed on devnet':'Confirmation unverified'}</strong><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} rel="noopener noreferrer" target="_blank">View transaction ↗</a><code>{result.signature}</code></div>}
+       {result&&<div className="trade-receipt"><strong>{result.confirmed?'Transaction signature confirmed on devnet':'Transaction confirmation unverified'}</strong><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} rel="noopener noreferrer" target="_blank">View transaction ↗</a><code>{result.signature}</code></div>}
+       {collateralProof&&<div className="trade-receipt" role="status"><strong>{collateralProof.status==='verified'?'USDC BALANCE MOVEMENT VERIFIED':'USDC BALANCE MOVEMENT NOT VERIFIED'}</strong><p>{collateralProof.detail}</p>{collateralProof.walletDeltaRaw!==null&&<p>Wallet USDC change: {Number(BigInt(collateralProof.walletDeltaRaw))/1e6} · Drift spot change: {Number(BigInt(collateralProof.driftDeltaRaw!))/1e6} USDC</p>}{collateralProof.status==='unverified'&&collateralBaseline&&<button type="button" disabled={usdcChecking||busy||network!=='verified'} onClick={()=>void recheckCollateralProof()}>{usdcChecking?'Rechecking…':'Recheck collateral proof ↻'}</button>}</div>}
       </section>
       <aside className="sn-v6-trade-side">
-        <section className="sn-v6-side-card"><div className="sn-v6-side-head"><h3>Account overview</h3><span>{network==='verified'?'DEVNET':'NOT VERIFIED'}</span></div><div className="sn-v6-account-number"><small>NATIVE SOL · WALLET</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})} <em>SOL</em></strong></div><div className="sn-v6-ticket-facts"><div><span>Wallet</span><strong>{publicKey?compact(publicKey.toBase58()):'Not connected'}</strong></div><div><span>Wrapped SOL · wallet</span><strong>{wrappedBalance===null?'Unverified':`${(Number(wrappedBalance)/1e9).toFixed(6)} wSOL`}</strong></div><div><span>Devnet USDC · wallet</span><strong>{usdcBalance===null?'Unverified':`${(Number(usdcBalance)/1e6).toFixed(2)} USDC`}</strong></div><div><span>Drift account</span><strong>{driftAccount?(driftAccount.exists?'Exists':'Not initialized'):'Not verified'}</strong></div><div><span>Trading collateral / PnL</span><strong>Not decoded</strong></div></div><div className="sn-v6-side-note">Native SOL and wallet-owned wSOL are separate from your deposited Drift collateral. If a deposit fails after wrapping, select Collateral → Unwrap wSOL to recover wallet-owned wSOL.</div></section>
+        <section className="sn-v6-side-card"><div className="sn-v6-side-head"><h3>Account overview</h3><span>{network==='verified'?'DEVNET':'NOT VERIFIED'}</span></div><div className="sn-v6-account-number"><small>NATIVE SOL · WALLET</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})} <em>SOL</em></strong></div><div className="sn-v6-ticket-facts"><div><span>Wallet</span><strong>{publicKey?compact(publicKey.toBase58()):'Not connected'}</strong></div><div><span>Wrapped SOL · wallet</span><strong>{wrappedBalance===null?'Unverified':`${(Number(wrappedBalance)/1e9).toFixed(6)} wSOL`}</strong></div><div><span>Devnet USDC · wallet</span><strong>{usdcBalance===null?'Unverified':`${(Number(usdcBalance)/1e6).toFixed(2)} USDC`}</strong></div><div><span>Drift account</span><strong>{driftAccount?(driftAccount.exists?'Exists':'Not initialized'):'Not verified'}</strong></div><div><span>Drift USDC spot balance</span><strong>{usdcReadiness?.driftDepositedAmount===null||!usdcReadiness?'Not independently read':`${Number(BigInt(usdcReadiness.driftDepositedAmount))/1e6} USDC (signed)`}</strong></div><div><span>Trading collateral / PnL</span><strong>Not independently verified</strong></div></div><div className="sn-v6-side-note">Native SOL and wallet-owned wSOL are separate from your deposited Drift collateral. If a deposit fails after wrapping, select Collateral → Unwrap wSOL to recover wallet-owned wSOL.</div></section>
         <section className="sn-v6-side-card sn-v6-safety"><div className="sn-v6-side-head"><h3>Execution safety</h3><Icon name="shield" size={19}/></div><div className="sn-v6-evidence-row"><span>Network</span><strong>{network==='verified'?'VERIFIED':'CHECK REQUIRED'}</strong></div><div className="sn-v6-evidence-row"><span>Mainnet</span><strong>DISABLED</strong></div><div className="sn-v6-evidence-row"><span>Vault deposits</span><strong>NOT ENABLED</strong></div><a target="_blank" rel="noopener noreferrer" href="https://faucet.solana.com/">Get devnet test SOL ↗</a></section>
       </aside>
     </div>

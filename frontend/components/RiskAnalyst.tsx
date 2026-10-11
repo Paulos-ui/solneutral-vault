@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import type { ChatMessage } from '@/lib/ai-chat';
 import { POSITION_RISK_DEFAULT } from '@/lib/position-risk';
 import { DEFAULT_EVIDENCE, type FundingEvidence } from '@/lib/intelligence';
 import { buildResearchBrief } from '@/lib/analyst';
@@ -13,16 +13,43 @@ export function RiskAnalyst(){
  const [modelAnswer,setModelAnswer]=useState<string|null>(null);
  const [token,setToken]=useState('');
  const [busy,setBusy]=useState(false);
- const [history,setHistory]=useState<{role:'user'|'assistant';content:string}[]>([]);
+ const [history,setHistory]=useState<ChatMessage[]>([]);
  const [error,setError]=useState('');
  const snapshot={assumptions:POSITION_RISK_DEFAULT,funding};
  useEffect(()=>{const abort=new AbortController();fetch('/api/market/funding',{cache:'no-store',signal:abort.signal}).then(r=>r.json()).then(p=>{if(!abort.signal.aborted&&p&&(p.status==='observed'||p.status==='stale')&&typeof p.latest?.hourlyPct==='number')setFunding({status:p.status,hourlyPct:p.latest.hourlyPct,ageMinutes:p.ageMinutes??null,source:p.source??null})}).catch(()=>{});return()=>abort.abort()},[]);
- const inspect=()=>{setError('');setModelAnswer(null);try{setAnswer(buildResearchBrief(snapshot,question))}catch{setError('Please enter a clear question between 8 and 500 characters.')}};
+ const inspect=()=>{setError('');setModelAnswer(null);try{setAnswer(buildResearchBrief(snapshot,question))}catch{setError('Please enter a question between 1 and 1200 characters.')}};
  const explain=async()=>{
-  setError('');setModelAnswer(null);if(!token.trim()){setError('Enter the private AI demo access token under AI Access to ask Claude. Scenario analysis works without it.');return;}
+  setError(''); setModelAnswer(null);
+  if(!token.trim()){
+    setError('Enter the private AI demo access token under AI Access to ask Claude. Scenario analysis works without it.');
+    return;
+  }
   setBusy(true);
-  try{const response=await fetch('/api/ai/interpret',{method:'POST',headers:{'Content-Type':'application/json','x-solneutral-demo-token':token},body:JSON.stringify({question,snapshot,history:history.slice(-6)})});const value=await response.json();if(!response.ok||typeof value.answer!=='string')throw Error(value.error||'AI unavailable');setModelAnswer(value.answer);setAnswer(null);setHistory(previous=>[...previous,{role:'user',content:question},{role:'assistant',content:value.answer}].slice(-12));}catch(e){setError(e instanceof Error?e.message:'AI unavailable. Use the verified research summary.')}finally{setBusy(false)}
+  try {
+    const response=await fetch('/api/ai/interpret',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-solneutral-demo-token':token},
+      body:JSON.stringify({question,snapshot,history:history.slice(-6)}),
+    });
+    const payload:unknown=await response.json();
+    if (!payload || typeof payload !== 'object' || !('answer' in payload) ||
+        typeof payload.answer !== 'string' || !response.ok) {
+      const message=payload && typeof payload==='object' && 'error' in payload &&
+        typeof payload.error==='string' ? payload.error : 'AI unavailable';
+      throw new Error(message);
+    }
+    const content=payload.answer;
+    setModelAnswer(content);
+    setAnswer(null);
+    setHistory(previous => {
+      const next: ChatMessage[]=[...previous,{role:'user',content:question},{role:'assistant',content}];
+      return next.slice(-12);
+    });
+  } catch(e) {
+    setError(e instanceof Error?e.message:'AI unavailable. Use the verified research summary.');
+  } finally { setBusy(false); }
  };
+
  return <div className="sn-v6-ai-workspace">
  <section className="sn-v6-chat-panel" aria-label="Ask SolNeutral AI">
   <div className="sn-v6-chat-head"><div className="sn-v6-chat-symbol">✳</div><div><strong>SolNeutral Analyst</strong><p>Risk research · Not trading advice</p></div><span>READ ONLY</span></div>

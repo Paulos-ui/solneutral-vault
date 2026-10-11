@@ -93,8 +93,9 @@ async function verifiedUsdcMarket(connection: Connection, client: Awaited<Return
   const chainMarket = await connection.getAccountInfo(marketPda, 'confirmed');
   if (!chainMarket || !chainMarket.owner.equals(client.program.programId)) throw new Error('Drift devnet USDC market is not available on-chain. No deposit or withdrawal was sent.');
   const mintPubkey = new PublicKey(expectedMint);
+  const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
   const mintInfo = await connection.getParsedAccountInfo(mintPubkey, 'confirmed');
-  if (!mintInfo.value || !('parsed' in mintInfo.value.data) || mintInfo.value.data.parsed?.type !== 'mint') throw new Error('USDC test-token mint cannot be verified on this devnet RPC.');
+  if (!mintInfo.value || !mintInfo.value.owner.equals(TOKEN_PROGRAM_ID) || !('parsed' in mintInfo.value.data) || mintInfo.value.data.parsed?.type !== 'mint') throw new Error('USDC test-token mint is missing or is not owned by the SPL Token program on this devnet RPC.');
   const decimals = Number(mintInfo.value.data.parsed.info.decimals);
   if (decimals !== 6) throw new Error('Unexpected devnet quote-token decimals; USDC actions are disabled.');
   return { marketIndex: market.marketIndex, mint: mintPubkey, decimals };
@@ -141,13 +142,13 @@ export async function inspectDriftDevnetUsdcReadiness(
     const { getAssociatedTokenAddressSync, getAccount } = await import('@solana/spl-token');
     const { PublicKey } = await import('@solana/web3.js');
     const associated = getAssociatedTokenAddressSync(spot.mint, wallet.publicKey);
-    const token = await getAccount(connection, associated, 'confirmed').catch((error: unknown) => {
-      // A missing ATA means zero wallet balance, but any other error must not
-      // be silently reinterpreted as a zero balance.
-      if (error && typeof error === 'object' && 'name' in error &&
-          (error.name === 'TokenAccountNotFoundError' || error.name === 'TokenInvalidAccountOwnerError')) return null;
-      throw error;
-    });
+    const accountInfo = await connection.getAccountInfo(associated, 'confirmed');
+    // A missing ATA means zero. An existing ATA with an invalid owner MUST
+    // surface as an error, never silently masquerade as a zero token balance.
+    if (accountInfo && !accountInfo.owner.equals((await import('@solana/spl-token')).TOKEN_PROGRAM_ID)) {
+      throw new Error('The derived wallet USDC account is not owned by the SPL Token program.');
+    }
+    const token = accountInfo ? await getAccount(connection, associated, 'confirmed') : null;
     if (token && (!token.mint.equals(spot.mint) || !token.owner.equals(wallet.publicKey))) {
       throw new Error('Wallet token account owner/mint mismatch. Collateral actions disabled.');
     }
@@ -237,8 +238,11 @@ export async function executeDriftDevnetAction(
       if (collateralAsset === 'usdc') {
         const { getAssociatedTokenAddressSync, getAccount } = await import('@solana/spl-token');
         tokenAccount = getAssociatedTokenAddressSync(spot!.mint!, wallet.publicKey);
-        const token = await getAccount(connection, tokenAccount, 'confirmed').catch(() => null);
-        if (!token || !token.owner.equals(wallet.publicKey) || !token.mint.equals(spot!.mint!) || token.amount < units!)
+        const accountInfo = await connection.getAccountInfo(tokenAccount, 'confirmed');
+        if (!accountInfo) throw new Error('No wallet token account exists for the EXACT Drift devnet USDC mint. No transaction was sent.');
+        if (!accountInfo.owner.equals((await import('@solana/spl-token')).TOKEN_PROGRAM_ID)) throw new Error('Wallet USDC token account is not owned by the SPL Token program. No transaction was sent.');
+        const token = await getAccount(connection, tokenAccount, 'confirmed');
+        if (!token.owner.equals(wallet.publicKey) || !token.mint.equals(spot!.mint!) || token.amount < units!)
           throw new Error('Not enough correctly minted test USDC in this wallet. Obtain the exact Drift devnet USDC mint shown in Collateral and refresh. No transaction was sent.');
       } else {
         ({ tokenAccount } = await prepareWrappedSolDeposit(connection, wallet, units!));
@@ -259,11 +263,13 @@ export async function executeDriftDevnetAction(
       }
       let tokenAccount;
       if (collateralAsset === 'usdc') {
-        const { getAssociatedTokenAddressSync } = await import('@solana/spl-token');
+        const { getAssociatedTokenAddressSync, getAccount, TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
         tokenAccount = getAssociatedTokenAddressSync(spot!.mint!, wallet.publicKey);
-        if (!(await connection.getAccountInfo(tokenAccount, 'confirmed'))) {
-          throw new Error('Create your wallet devnet USDC token account before withdrawal (receive a small amount of the correct test USDC first). No withdrawal was sent.');
-        }
+        const accountInfo = await connection.getAccountInfo(tokenAccount, 'confirmed');
+        if (!accountInfo) throw new Error('Create your wallet devnet USDC token account before withdrawal (receive a small amount of the correct test USDC first). No withdrawal was sent.');
+        if (!accountInfo.owner.equals(TOKEN_PROGRAM_ID)) throw new Error('USDC withdrawal destination is not an SPL Token account. No transaction was sent.');
+        const dest = await getAccount(connection, tokenAccount, 'confirmed');
+        if (!dest.owner.equals(wallet.publicKey) || !dest.mint.equals(spot!.mint!)) throw new Error('USDC withdrawal destination owner/mint mismatch. No transaction was sent.');
       } else {
         ({ tokenAccount } = await ensureWrappedSolDestination(connection, wallet));
       }
