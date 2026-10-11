@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { SolanaSessionProvider } from "@/components/SolanaSessionProvider";
 
 export const metadata: Metadata = {
   title: { default: "SolNeutral — The Hedge Observatory", template: "%s | SolNeutral" },
@@ -11,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><a className="skip-link" href="#content">Skip to content</a><SiteHeader/><main id="content">{children}</main><SiteFooter/></body></html>;
+  return <html lang="en"><body><a className="skip-link" href="#content">Skip to content</a><SolanaSessionProvider><SiteHeader/><main id="content">{children}</main><SiteFooter/></SolanaSessionProvider></body></html>;
 }

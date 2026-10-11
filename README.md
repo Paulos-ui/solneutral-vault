@@ -1,189 +1,97 @@
-# SOLNEUTRAL / V2
-### The Hedge Observatory
+# SolNeutral — The Hedge Observatory
 
-> **The art of staying neutral.** The goal isn't to erase risk. It's to make risk visible.
+> **Yield is visible. Risk should be too.**
 
-SolNeutral V2 is an in-development, risk-intelligent Solana DeFi research experience. It explores the mechanics of long-spot / short-perpetual hedges, makes funding assumptions inspectable, and helps users understand how hedge drift affects price exposure. The current release is a polished, working **research preview**, not a custodial vault or live trading service.
+**Founder:** [Web3 supporter](https://x.com/instators) · **X:** [@instators](https://x.com/instators) · **GitHub:** [paulos-ui](https://github.com/Paulos-ui)  
+**Network:** Solana · **Protocol research:** Drift · **Community focus:** Colosseum / Superteam Nigeria
 
-**Founder:** [Web3 supporter](https://x.com/instators) · **X:** [@instators](https://x.com/instators)  
-**Ecosystem:** Solana · **Builder audience:** Colosseum and Superteam Nigeria (independent project; no affiliation or endorsement implied)
+SolNeutral is an independent Solana research and risk-intelligence product for delta-neutral strategies. It turns opaque hedge assumptions into readable exposures, empirical funding observations, comparable strategies, and documented failure cases. We aim to build secure vault infrastructure, but we don't equate a promising backtest with realized yield or claim any unaudited deposit infrastructure is production-ready.
 
-## Why build SolNeutral?
+## Why it exists
 
-“Delta neutral” doesn't mean risk-free. A perfect-looking hedge can still lose money to funding reversals, leverage, liquidations, basis changes, fees, poor execution, or infrastructure failures. SolNeutral puts the explanatory tools **before** the yield headline.
+A spot-long/perpetual-short portfolio can dampen price exposure without eliminating funding reversals, collateral shortfalls, basis risk, liquidation risk, faulty execution, oracle outages, or protocol vulnerabilities. Yield dashboards often emphasize an APY and bury the conditions under which the strategy fails. **SolNeutral starts with the conditions.**
 
-## What is actually working in this release
+## Core experience
 
-| Feature | Current status |
-| --- | --- |
-| Bespoke "Hedge Observatory" visual identity | Implemented |
-| Animated interactive hedge field (60–140%) | Implemented — **conceptual** |
-| Educational spot/perpetual exposure chart | Implemented — **illustrative** |
-| Risk Lab with adjustable scenarios | Implemented — **deterministic simplified math** |
-| Server-side `POST /api/risk/scenario` | Implemented — input validation and bounded output |
-| `GET /api/status` | Implemented — honest status and capability flags |
-| Responsive layout, navigation, reduced-motion support | Implemented |
-| About / Field Manual / onboarding documentation | Implemented |
-| Guarded deposit entry point | Implemented — **deposits disabled** |
-| Drift funding observations for SOL-PERP | **Read-only conditional integration** — validates external indexed records and shows unavailable state otherwise |
-| Wallet Lens (`/wallet-lens`) | **Read-only conditional Solana RPC** — retrieves public SOL and canonical mainnet USDC balances, without signing |
-| Drift Lens (`/drift-lens`) | **Read-only conditional verification** — checks Drift V2 User account ownership and discriminator from Solana RPC; displays bounded external indexed records if available |
-| Live Solana vault data and user transaction history | **Not connected** |
-| Wallet connection, secure vault accounting, keeper | **Not implemented in V2 yet** |
-| AI analyst with sourced calculations | **Planned** |
-| Production contract audits or mainnet vault | **Not delivered** |
+| Product surface | User benefit | What is verified? |
+| --- | --- | --- |
+| [Homepage](https://solneutral-vault.vercel.app/) + [Observatory](https://solneutral-vault.vercel.app/observatory) | Bespoke, interactive hedge visualization | Illustrative model only |
+| [Intelligence Terminal](https://solneutral-vault.vercel.app/terminal) | Funding observation, seven-shock matrix, model stress, hedge comparisons, in-page watch thresholds | External funding records when validated; other values modeled |
+| [Risk Lab](https://solneutral-vault.vercel.app/risk-lab) + [Position Risk Engine](https://solneutral-vault.vercel.app/risk-engine) | Explore how spot, short perp, collateral and funding scenarios change outcomes | Deterministic calculations from user's assumptions |
+| [Trade Lab](https://solneutral-vault.vercel.app/trade) | Phantom/Solflare wallet discovery, on-chain Drift user initialization, test SOL collateral deposit/withdrawal, bounded SOL-PERP IOC limit orders | Wallet-signed **DEVNET** transactions, subject to devnet wallet/RPC testing. Not a SolNeutral vault. |
+| [Wallet Lens](https://solneutral-vault.vercel.app/wallet-lens) | Read public SOL and USDC wallet balances without requesting signatures | Solana RPC if available |
+| [Drift Account Lens](https://solneutral-vault.vercel.app/drift-lens) | Verify Drift User account provenance; inspect external indexed records | Owner/discriminator verified via RPC; indexed records labeled as external |
+| [Explainable Analyst](https://solneutral-vault.vercel.app/analyst) | Evidence-grounded risk answers, with optional private language model | Deterministic model by default; optional LLM text, never executed trades |
+| [About](https://solneutral-vault.vercel.app/about) + [Field Manual](https://solneutral-vault.vercel.app/docs) | Product vision, technical architecture, limitations and user guide | Documentation |
+| `vault/solneutral_v3` | Secure custody-and-share accounting design exploration | **Uncompiled / unaudited localnet-only reference; no mainnet use** |
 
-No real vault TVL, live APY, user PnL, successful executed trades, or liquidity is claimed by this preview.
+**Not operational:** real-money SolNeutral pooled-vault deposits/withdrawals, mainnet trade execution within SolNeutral, autonomous Drift hedge execution, keeper, verified real-time Drift margin/liquidation computations, audited vault, verified TVL, and automated notifications. Those are explicit future security milestones, not hidden features.
 
-## Start in under five minutes
+## Install and develop
 
-Requires **Node.js 22+** and npm. Commands use your normal Git Bash terminal.
+Requires Node.js 22+ and npm:
 
 ```bash
 cd frontend
 npm install
+npm test
+npm run typecheck
+npm run build
 npm run dev
 ```
 
-Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/wallet-lens`, `/drift-lens`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
+Then open `http://localhost:3000/terminal`. Existing Vercel deployments should use **Root Directory `frontend`**. A working page does **not** imply on-chain execution. All keyless browser research works without Railway.
 
-### Run checks
+### Read-only Solana and funding
 
-```bash
-npm run test
-npm run typecheck
-npm run lint
-npm run build
-```
+By default the app attempts public mainnet Solana RPC and the Drift public indexed data endpoint. Use a private server-side RPC URL in Vercel if the public RPC rate-limits or denies requests. Failure yields an explicit unavailable state, not simulated live data.
 
-> The ZIP is delivered without `node_modules` or a generated package lock, since dependency installation requires network access. Running `npm install` will generate `package-lock.json`. Commit that lockfile after confirming installation.
+### Optional AI (private, never enabled automatically)
 
-### Test the research API
+The `/analyst` page works without credentials. To enable language-model explanations, configure these **server-side** environment variables in Vercel:
 
 ```bash
-curl -X POST http://localhost:3000/api/risk/scenario \
-  -H 'Content-Type: application/json' \
-  -d '{"spotNotionalUsd":25000,"hedgeRatioPct":100,"priceMovePct":-18,"annualFundingPct":8,"days":30}'
+ANTHROPIC_API_KEY=your-private-provider-key
+ANTHROPIC_MODEL=a-model-you-have-access-to
+AI_DEMO_ACCESS_TOKEN=a-random-secret-at-least-20-characters
 ```
 
-This is the same bounded calculation as the visual simulator. Invalid inputs return HTTP `422`; malformed JSON returns `400`.
+For a private preview, enter only the **demo access token** on the Analyst page. Do not share the server-side provider key. The API accepts only bounded questions and independently calculates the evidence before asking the model to explain. It cannot trade or access wallet secrets. **Before public availability, add durable distributed rate limiting, authentication and spending caps.**
 
-## How it works / User guide
+## Technology and architecture
 
-1. **Start at the homepage.** Adjust the counterweight in the hedge field to see the basic effect of balancing long and short exposures.
-2. **Open the Observatory.** Inspect the same conceptual balance mechanism and the illustrative indexed exposure chart; click its legend to isolate series.
-3. **Open Risk Lab.** Choose a spot notional, hedge ratio, price shock, annualized funding assumption, and time horizon.
-4. **Study the decomposition.** The output separates spot price P/L, perpetual price P/L, funding effect, gross notional and residual delta.
-5. **Read the Field Manual.** Learn exactly what has been modeled, what has been omitted, and what must be built before real funds are at stake.
+- **Next.js 16 / TypeScript / React 19**, Tailwind, Framer Motion.
+- **Server routes:** read-only Solana RPC, external Drift indexed funding, provenance verification, bounded deterministic model endpoints, optional private AI interpretation.
+- **Security boundary:** wallet signing stays in the users own browser wallet, never in a SolNeutral server. The model can provide only explanations; it has no transaction tool.
+- **State of truth:** `observed`/`stale`/`unavailable` for external readings, `illustrative`/`user-hypothesis` for modeled calculations.
+- **New Anchor program:** separate research vault with token-account constraints and internal share accounting. **Not compiled, audited, connected or deployed.**
 
-## Simplified model
+See [Technical Architecture](docs/ARCHITECTURE_V3.md), [Vault Release Gates](docs/VAULT_SECURITY_GATES.md), [Demo Walkthrough](docs/DEMO_SCRIPT.md), and [Engineering Plan](docs/ENGINEERING_PLAN.md).
 
-Let **S** = USD notional of a long spot position, **h** = short perp hedge ratio (e.g. `1.0` for fully hedged), **m** = hypothetical spot price move, **f** = assumed annualized funding fraction, and **d** = number of days.
+## How to use SolNeutral
 
-```text
-spot price P/L   = S × m
-perp price P/L   = −S × h × m
-funding effect   = S × h × f × (d / 365)
-modeled total    = spot P/L + perp P/L + funding effect
-net delta (%)    = (1 − h) × 100
-```
+1. Open the homepage and interact with the hedge balance visualization.
+2. Visit **Intelligence Terminal**. Inspect external funding freshness and adjust spot, short, collateral and funding assumptions. Compare strategy structures and notice buffer warnings.
+3. Visit **Risk Engine** for the full seven-scenario ledger. No theoretical value is described as your real on-chain account.
+4. Enter a public address in **Wallet Lens** or a Drift User subaccount in **Drift Lens** to review read-only evidence.
+5. Connect Phantom or Solflare in **Trade Lab** to test wallet-signed Drift transactions on **DEVNET ONLY**, after acquiring devnet SOL. Test positions are not SolNeutral vault positions.
+6. Ask a question in **Analyst**; inspect the deterministic explanation. Language-model interpretation is an optional locked preview.
+7. Read **Field Manual** and vault limitations before making any financial decision.
 
-**Important:** This is intentionally not a deployable trading model. It does NOT model collateral, leverage, liquidation, margin health, borrow costs, basis, compounding, variable intra-period funding, position rebalancing, execution slippage, protocol fees, smart contract risk, or transaction failures. Funding payments can change direction. The results are **illustrative only**.
+## Prior work / hackathon disclosure
 
-## Architecture
+This application is an upgrade of the earlier SolNeutral V1 project. Historical Flask simulations and Anchor source are preserved under `legacy/`. We will distinguish reusable prior work from new work created within each applicable competition window, and disclose that provenance in submissions. Interest in Colosseum and Superteam Nigeria does not imply affiliation, sponsorship, selection or award.
 
-```text
-frontend/                      Next.js 16, React 19, TypeScript, Tailwind, Framer Motion
-  app/                         App Router pages and server endpoints
-    page.tsx                   Signature landing page
-    observatory/               Conceptual exposure field
-    risk-lab/                  Interactive deterministic model
-    about/                     Vision and provenance
-    docs/                      Field manual / user guide
-    deposit/                   Guarded disabled vault status
-    api/status/                Explicit preview-status endpoint
-    api/risk/scenario/         Validated scenario endpoint
-    api/market/funding/        Read-only indexed Drift funding proxy
-  components/                  Brand, motion, SVG instrument, chart and simulator
-  lib/scenario.ts              Shared pure, bounded calculations
-  lib/funding.ts               Strict external record parsing and rate unit conversion
-  tests/                       Scenario correctness and input boundary tests
-legacy/                        Archived V1 source — NOT RUN by V2
-  frontend-v1/                 Original V1 React/Next frontend
-  backend/                     Flask / historical simulation API
-  scripts/                     Historical research scripts and CSV
-  vault/                       Old incomplete Anchor source and associated artifacts
-  README_V1.md                 Original historical copy
+### Engineering commitments
 
-docs/                           Build roadmap, design system and migration decisions
-```
+We won't ship a vault based on screenshots, fabricated APY, autogenerated secrets, or a passing frontend build alone. Mainnet custody requires full Drift execution design, fresh program ID and generated IDL, extensive Anchor local-validator tests, a threat model, operational controls, monitoring and independent security review.
 
-The site can run on Vercel without Railway because its current APIs are stateless Next.js route handlers. **Continuous automated strategy execution must not be placed into request-limited serverless handlers without a separately designed keeper.**
+**Web3 supporter — [@instators](https://x.com/instators)**
 
-## Deploy to Vercel
+## V4 / User-controlled Drift devnet transaction lab
 
-Push this directory to GitHub, then in Vercel **Import Project** and set **Root Directory** to `frontend`. Use framework preset **Next.js**, build command `npm run build`, and let Vercel detect the rest. The research preview requires no secret credentials.
+This release adds wallet-standard discovery for Phantom and Solflare, a client-side RPC genesis check, personal Drift account initialization, native SOL collateral deposits and reduce-only withdrawals on Drift devnet, bounded SOL-PERP limit IOC orders, cancel-orders and explorer receipts. Users must explicitly approve each transaction through their wallet. The interface cannot access seed phrases or sign without consent.
 
-If replacing an existing deployment, don't redirect real-user deposit flows to this preview. Withdrawals from any earlier deployment must be separately safeguarded and not silently disabled without a migration plan.
+**This is not a pooled SolNeutral vault.** Only a personal Drift devnet account receives deposits; our V3 Anchor reference code is not deployed or safe for real assets. Mainnet execution is unavailable. Actual transaction success requires a funded wallet, functional devnet Drift markets and an RPC provider; JavaScript tests are not on-chain integration tests.
 
-## Development roadmap
-
-**Now — V2 design foundation:** Brand system, observatory, interactions, studio, educational docs, safe preview deployment.  
-**Now underway — sourced intelligence:** Read-only Drift funding observations and public Solana wallet balance reads with validation and explicit unavailable states; next implement verified Drift user positions, position-specific calculations, expanded risk monitoring, and data-integrity monitoring.  
-**Then — protocol engineering:** Explicit strategy specification, vault share accounting, collateral controls, privileged-role analysis, simulated adversarial testing, and independent review.  
-**Finally — AI and execution:** Explainable agent with calculations/source attribution, opt-in notifications, monitored execution only after comprehensive risk work.
-
-## Responsible framing & originality
-
-This is an upgrade of an **existing SolNeutral V1 concept**. The original project/source is retained under `legacy/` for provenance. Clearly disclose reused work when submitting to any hackathon; do not represent previously written code as fresh work within a new competition period.
-
-Inspired by ecosystem builder communities **Colosseum** and **Superteam Nigeria**, not presented as officially affiliated with either group. Founder attribution: **Web3 supporter (@instators)**.
-
-## Security
-
-No wallet connection or real-money vault functionality exists in this preview. Never commit API tokens, seed phrases, wallet keypairs, or `.env` credentials. Do not run or deploy the archived Anchor program without a separate security/consistency review: its prior source had mismatched advertised instructions and an unsuitable fixed-yield withdrawal mechanism.
-
-## License
-
-No open-source license is granted automatically by this README. Choose a license explicitly before public distribution.
-
-## Funding signal integration (read-only)
-
-The Observatory calls `GET /api/market/funding` in the Next.js application. This route requests public `SOL-PERP` indexed market funding records from the [Drift Data API](https://data.api.drift.trade/playground), validates the record timestamps and numeric fields, converts the reported precision into normalized hourly percentages, and displays the latest verified observations and their data age. If that upstream indexer is unavailable, the UI clearly shows an unavailable state and **does not substitute placeholder metrics**. This integration uses public indexed **market** data, not connected wallets, settled PnL, realized vault returns, or on-chain transaction proofs. Data availability cannot be guaranteed without testing on the production Vercel environment. The annualized figure extrapolates an hourly observation and is not an APY forecast.
-
-
-## Phase 2C — Wallet Lens / Chain Intelligence
-
-Visit `/wallet-lens` to inspect **native SOL** and **canonical mainnet USDC** balances associated with any public Solana wallet address, alongside the existing read-only indexed Drift market funding panel. These are separate kinds of evidence: observing a wallet balance or general market rate does **not** establish vault earnings, risk neutrality, position PnL, or open Drift positions.
-
-### Setup
-
-In `frontend/`, run `npm install`, `npm test` and `npm run build`. Optional: set `SOLANA_RPC_URL` (server-side only) to an HTTPS mainnet RPC provider endpoint in local `.env.local` and Vercel environment variables. If unset, the application tries `https://api.mainnet-beta.solana.com`, which is rate limited and may be unsuitable for production. **Never prefix an RPC secret with `NEXT_PUBLIC_`**.
-
-Read-only API: `POST /api/chain/wallet` with `{ "address": "<public Solana key>" }`. Uses only `getBalance` and `getTokenAccountsByOwner` (canonical USDC mint). Input is checked for an actual decoded 32-byte public key, network errors degrade to partial/unavailable, and responses are `no-store`. This endpoint cannot send transactions.
-
-Recheck regularly for newer RPC values; no realtime socket, settled profit calculation or full-wallet valuation is claimed. No private keys or seed phrases should ever be provided. All account addresses are public.
-
-
-## Phase 2D — Drift Account Lens / Source Integrity
-
-`/drift-lens` is an additional **read-only** research instrument. It accepts an actual Drift V2 **User subaccount public key** (not a normal authority wallet address). The server calls Solana mainnet `getAccountInfo` with a limited 8-byte data slice and confirms (a) an RPC slot, (b) program owner `dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH`, (c) a non-executable account, and (d) the Anchor `account:User` discriminator. This establishes only the account type.
-
-Only when the account is confirmed does `/api/drift/account` query the public Drift Data API `/user/{accountId}/positions`, where it strictly projects at most 20 provider-reported records. Amounts are shown as **raw fields**, without assuming scale. Indexed records may be historical. The service does **not** assert actual current positions, USD notional, margin safety, liquidation prices, live leverage, account PnL, settled yield, or execution. An upstream outage or unknown schema displays `unavailable`; no synthetic data is substituted.
-
-This is a server-only, unauthenticated public-read endpoint and must have application-level abuse controls / rate limiting before handling significant real-world traffic. No SDK, secret key, login, signature, deposit, or trade execution is introduced.
-
-Test with `npm test && npm run build` from `frontend/`. If using a private RPC provider, set `SOLANA_RPC_URL` only on the server.
-
-
-## Phase 2E — Position Stress Engine (combined 2C–2E release)
-
-- **Build repair:** `frontend/tsconfig.json` targets `ES2020` so TypeScript accepts `BigInt` in the public-address validator (`frontend/lib/wallet.ts`). This corrects the Vercel error reported for Phase 2C.
-- **Phase 2D included:** `/drift-lens`, read-only program ownership and Anchor User discriminator verification, bounded indexer data. This build includes the full 2D patch; do not install it separately.
-- **Phase 2E added:** `/risk-engine`, interactive manual-input SOL spot/perpetual stress test, directional exposure, hypothetical daily funding, and separate perpetual collateral-buffer approximation. Seven price shocks and deterministic test coverage. `/api/risk/positions` exposes the same bounded calculations.
-- The stress engine is **not connected to a live Drift subaccount**. Actual on-chain position amounts, live margin health and liquidation prices remain unverified and are not shown. No wallet signatures, vault deposits or order execution.
-- Deployment requires **Node.js 22+**, `cd frontend && npm install && npm test && npm run build`.
-
-### Research disclaimer
-
-The position engine uses user-entered hypotheses and excludes venue-specific margin models, slippage, fees, oracles and path-dependent liquidation. A sample scenario is not a real portfolio or trading signal.
+From the `frontend` directory, install the new dependencies and run `npm test && npm run typecheck && npm run build`. Optional `NEXT_PUBLIC_DEVNET_RPC_URL` controls the devnet RPC (its genesis hash is checked), `NEXT_PUBLIC_ENABLE_DEVNET_TRADING=false` disables devnet actions. Because any `NEXT_PUBLIC_` variable is visible in browser bundles, restrict RPC keys at the provider or use a proxy. Never publish `ANTHROPIC_API_KEY`. See [Devnet Execution Security](docs/DEVNET_EXECUTION_V4.md).

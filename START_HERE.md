@@ -1,29 +1,40 @@
-# Start here — Jayking / Web3 supporter
+# SolNeutral V4 — Complete cumulative release (V2 + 2A–2E + V3 + V4)
 
-This is the FIRST EXECUTABLE DESIGN FOUNDATION, not the finished fund-managing protocol. Your V1 frontend, backend, and Anchor work are archived under `legacy/` for analysis; the V2 frontend lives in `frontend/`.
+This archive contains the **entire currently assembled V4 source**. It is **not** a 17-file patch. It combines the redesigned V2 experience, research upgrades through Phase 2E, V3 Intelligence and AI Analyst, and V4 Phantom/Solflare Drift devnet Trade Lab. The earlier V1 materials are kept under `legacy/` and the experimental Anchor V3 contract under `vault/solneutral_v3/`.
 
-## Git Bash (Windows)
+## Install into the EXISTING Git repo (Git Bash)
+
+Download `SolNeutral_V4_COMPLETE_All_In_One.zip` to your Windows Desktop. Run:
+
+```bash
+cd "/mnt/c/Users/MY PC/Desktop/solneutral-vault"
+unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V4_COMPLETE_All_In_One.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V4_COMPLETE_All_In_One.zip"
+```
+
+No new project folder; matching files are overwritten. Git history is preserved (`.git` is NOT packaged). The ZIP is removed **only after successful extraction**. Files present locally but absent from the archive are not deleted.
+
+## Validate
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm test && npm run typecheck && npm run build
 ```
 
-Visit http://localhost:3000. Change the hedge slider on the hero, explore `/observatory` and `/risk-lab`, and read `/about` and `/docs`.
+Only if the checks succeed, push from the repository root:
 
-## When ready to publish the preview
+```bash
+cd ..
+git add -A && git commit -m "feat: consolidate SolNeutral V4 intelligence and devnet trade lab" && git push origin HEAD
+```
 
-In Vercel, **Root Directory = `frontend`**. This is a research preview and requires no Railway subscription or secrets. See README for validation, cautions and status.
+Vercel Project Root Directory: `frontend`.
 
-## Do not assume
+## Safety and functional status
 
-- The site does not connect to Drift or Solana yet.
-- No real vault accepts deposits.
-- Simulated returns are not actual vault PnL.
-- The old Anchor program under `legacy` is not suitable for production deployment as supplied.
-- Live integrations and AI analyst are next development phases.
-
-## Branding
-
-Founder credit: **Web3 supporter**, X **@instators**. No prior founder attribution appears in the V2 website. The archived V1 documents are intentionally unedited historical records.
+- Public portfolio observations use read-only RPC.
+- Drift signing controls in `/trade` are **devnet-only code**, requiring live wallet / RPC / exchange integration verification before considering them operational.
+- The Anchor V3 vault is research source and has NOT been compiled, independently audited or connected to deposits.
+- No live mainnet trading or real-currency SolNeutral pooled-vault deposits are enabled.
+- AI remains explanatory; provider secret must only be configured as a **server-side** environment variable, never shared or embedded in client code.
+- `npm` tests are not substitutes for on-chain integration tests. Never move mainnet funds on the basis of a passing frontend build.

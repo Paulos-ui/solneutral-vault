@@ -4,8 +4,12 @@ export const dynamic = 'force-dynamic';
 export function GET() {
   return NextResponse.json({
     project: 'SolNeutral',
-    version: '2.0.0-alpha.4',
-    mode: 'research-preview',
+    version: '3.0.0-research-alpha',
+    mode: 'integrated-research-preview',
+    intelligenceTerminalAvailable: true,
+    deterministicAnalystAvailable: true,
+    optionalPrivateLanguageModelConfigured: Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_MODEL && process.env.AI_DEMO_ACCESS_TOKEN),
+    liveVaultTradingEnabled: false,
     executionEnabled: false,
     depositsEnabled: false,
     walletSigningEnabled: false,

@@ -1,0 +1,9 @@
+[toolchain]
+anchor_version = "0.29.0"
+[programs.localnet]
+solneutral_v3 = "Ec8p91GG46mQHr9UVGXzddJqVzcjiswGxoWAFW6BPsUA"
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+[scripts]
+test = "yarn test"

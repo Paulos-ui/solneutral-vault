@@ -1,6 +1,6 @@
 {
-  "name": "solneutral-v2",
-  "version": "2.0.0-alpha.1",
+  "name": "solneutral",
+  "version": "4.0.0-devnet.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,12 @@
     "framer-motion": "^12.23.0",
     "next": "16.2.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "@drift-labs/sdk": "2.143.0-beta.4",
+    "@solana/web3.js": "^1.98.4",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.40",
+    "@solana/wallet-adapter-react-ui": "^0.9.39"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

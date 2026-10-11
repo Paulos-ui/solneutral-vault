@@ -1,0 +1,118 @@
+/**
+ * Drift execution adapter: only invoked by explicit user clicks after wallet signature.
+ * This interacts with a USER-OWNED DRIFT account, NOT the experimental SolNeutral vault.
+ * DEVNET ONLY: mainnet is impossible through the exported transaction functions.
+ */
+import type { Connection } from '@solana/web3.js';
+import type { AnchorWallet } from '@solana/wallet-adapter-react';
+import {
+  assertDevnetGenesis, boundedLimitPrice, DEVNET_GENESIS_HASH,
+  DRIFT_SOL_PERP_MARKET_INDEX, DRIFT_SOL_SPOT_MARKET_INDEX,
+  validateDevnetAmount,
+} from './devnet-execution';
+
+export type ExecutionAction = 'initialize' | 'deposit' | 'withdraw' | 'long' | 'short' | 'cancel';
+export type ExecutionResult = { signature: string; confirmed: boolean; description: string; userAccount: string };
+
+async function openDevnetClient(connection: Connection, wallet: AnchorWallet) {
+  const genesis = await connection.getGenesisHash();
+  assertDevnetGenesis(genesis);
+  if (!wallet.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) throw new Error('Connect a signing wallet first.');
+
+  // Dynamic import keeps this large SDK out of all research pages.
+  const sdk = await import('@drift-labs/sdk');
+  const config = sdk.initialize({ env: 'devnet' });
+  const { PublicKey } = await import('@solana/web3.js');
+  const loader = new sdk.BulkAccountLoader(connection, 'confirmed', 1200);
+  const client = new sdk.DriftClient({
+    connection,
+    wallet,
+    env: 'devnet',
+    programID: new PublicKey(config.DRIFT_PROGRAM_ID),
+    ...sdk.getMarketsAndOraclesForSubscription('devnet'),
+    accountSubscription: { type: 'polling', accountLoader: loader },
+  });
+  const subscribed = await client.subscribe();
+  if (!subscribed) throw new Error('Drift devnet market subscription is unavailable.');
+  return { client, sdk, config };
+}
+
+export async function inspectDriftDevnetAccount(connection: Connection, wallet: AnchorWallet) {
+  const genesis = await connection.getGenesisHash();
+  assertDevnetGenesis(genesis);
+  const { getUserAccountPublicKeySync } = await import('@drift-labs/sdk');
+  const { PublicKey } = await import('@solana/web3.js');
+  const sdk = await import('@drift-labs/sdk');
+  const config = sdk.initialize({ env: 'devnet' });
+  const id = getUserAccountPublicKeySync(new PublicKey(config.DRIFT_PROGRAM_ID), wallet.publicKey, 0);
+  const account = await connection.getAccountInfo(id, 'confirmed');
+  if (account && !account.owner.equals(new PublicKey(config.DRIFT_PROGRAM_ID))) {
+    throw new Error('Derived account owner does not match the configured Drift devnet program.');
+  }
+  return { address: id.toBase58(), exists: Boolean(account), genesis };
+}
+
+async function waitForVerifiedSignature(connection: Connection, signature: string): Promise<boolean> {
+  // The SDK broadcasts transactions; the RPC is independently queried for confirmation.
+  // A submitted order may not fill just because the transaction was confirmed.
+  const outcome = await connection.confirmTransaction(signature, 'confirmed');
+  if (outcome.value.err) throw new Error('Transaction was rejected on-chain. Inspect the signature in Solana Explorer.');
+  const status = (await connection.getSignatureStatuses([signature], {searchTransactionHistory:true})).value[0];
+  return Boolean(status && !status.err && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized'));
+}
+
+/** All actions require a connected wallet, devnet RPC, small validated sizes and separate user confirmation. */
+export async function executeDriftDevnetAction(
+  connection: Connection,
+  wallet: AnchorWallet,
+  action: ExecutionAction,
+  amountText: string,
+): Promise<ExecutionResult> {
+  const units = action === 'initialize' || action === 'cancel' ? null : validateDevnetAmount(action, amountText);
+  const { client, sdk, config } = await openDevnetClient(connection, wallet);
+  const programId = new (await import('@solana/web3.js')).PublicKey(config.DRIFT_PROGRAM_ID);
+  try {
+    const userId = await client.getUserAccountPublicKey(0);
+    const account = await connection.getAccountInfo(userId, 'confirmed');
+    if (account && !account.owner.equals(programId)) throw new Error('Invalid Drift user account owner.');
+    if (!account && action !== 'initialize') throw new Error('Initialize your Drift devnet account before sending funds or placing orders.');
+    if (account && action === 'initialize') throw new Error('Drift account already exists; no need to initialize it again.');
+    let signature: string;
+    let description: string;
+    if (action === 'initialize') {
+      [signature] = await client.initializeUserAccount();
+      description = 'Drift devnet user-account initialization';
+    } else if (action === 'deposit') {
+      const lamports = await connection.getBalance(wallet.publicKey, 'confirmed');
+      if (lamports - Number(units!) < 20_000_000) throw new Error('Insufficient devnet SOL after reserving 0.02 SOL for network fees/rent.');
+      signature = await client.deposit(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, wallet.publicKey, 0);
+      description = 'Deposited wrapped SOL collateral to your personal Drift devnet account';
+    } else if (action === 'withdraw') {
+      // reduceOnly=true: never create a spot borrow to fund a withdrawal.
+      signature = await client.withdraw(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, wallet.publicKey, true, 0);
+      description = 'Withdrew SOL collateral from your personal Drift devnet account';
+    } else if (action === 'cancel') {
+      signature = await client.cancelOrders(sdk.MarketType.PERP, DRIFT_SOL_PERP_MARKET_INDEX);
+      description = 'Requested cancellation of outstanding SOL-PERP devnet orders';
+    } else {
+      const oracle = client.getOracleDataForPerpMarket(DRIFT_SOL_PERP_MARKET_INDEX);
+      const rawPrice = BigInt(oracle.price.toString());
+      const cap = boundedLimitPrice(rawPrice, action);
+      const market = client.getPerpMarketAccount(DRIFT_SOL_PERP_MARKET_INDEX);
+      if (!market) throw new Error('SOL-PERP market unavailable on devnet.');
+      const params = sdk.getLimitOrderParams({
+        marketIndex: DRIFT_SOL_PERP_MARKET_INDEX,
+        direction: action === 'long' ? sdk.PositionDirection.LONG : sdk.PositionDirection.SHORT,
+        baseAssetAmount: new sdk.BN(units!.toString()),
+        price: new sdk.BN(cap.toString()),
+        immediateOrCancel: true,
+      });
+      signature = await client.placePerpOrder(params);
+      description = `Submitted ${action.toUpperCase()} SOL-PERP limit IOC order on Drift devnet (1% oracle price guard; may not fill)`;
+    }
+    const confirmed = await waitForVerifiedSignature(connection, signature);
+    return { signature, confirmed, description, userAccount: userId.toBase58() };
+  } finally {
+    await client.unsubscribe().catch(() => undefined);
+  }
+}
