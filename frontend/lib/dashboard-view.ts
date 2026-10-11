@@ -1,18 +1,27 @@
 /** Dashboard presentation helpers. Unknown figures remain unknown, never zero. */
+export type FundingStatus = 'observed' | 'stale' | 'unavailable';
+export type FundingRecord = { time: string; hourlyPct: number };
+export type FundingSummary = {
+  status: FundingStatus;
+  hourlyPct: number | null;
+  records: FundingRecord[];
+  updatedAt: string | null;
+};
 export function formatObservedNumber(value:number|null, maximumFractionDigits=3){
  return value===null||!Number.isFinite(value)?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits}).format(value);
 }
-export function summarizeFunding(input:unknown){
- const noData={status:'unavailable' as const,hourlyPct:null as number|null,records:[] as {time:string;hourlyPct:number}[],updatedAt:null as string|null};
+export function summarizeFunding(input: unknown): FundingSummary {
+ const noData: FundingSummary = { status: 'unavailable', hourlyPct: null, records: [], updatedAt: null };
  if(!input||typeof input!=='object')return noData;
  const response=input as Record<string,unknown>;
  if(response.status!=='observed' && response.status!=='stale')return noData;
+ const status: FundingStatus = response.status === 'observed' ? 'observed' : 'stale';
  const raw=Array.isArray(response.records)?response.records:[];
  const records=raw.filter((v):v is {time:string;hourlyPct:number}=>typeof v==='object'&&v!==null&&typeof v.time==='string'&&Number.isFinite(Date.parse(v.time))&&typeof v.hourlyPct==='number'&&Number.isFinite(v.hourlyPct)&&Math.abs(v.hourlyPct)<100).slice(0,24).reverse();
  const latest=response.latest as Record<string,unknown>|undefined;
  const hourlyPct=latest&&typeof latest.hourlyPct==='number'&&Number.isFinite(latest.hourlyPct)?latest.hourlyPct:null;
  const updatedAt=typeof response.fetchedAt==='string'&&Number.isFinite(Date.parse(response.fetchedAt))?response.fetchedAt:null;
- return {status:response.status,hourlyPct,records,updatedAt};
+ return {status,hourlyPct,records,updatedAt};
 }
 export function scalePath(values: number[],width:number,height:number,pad=12){
  if(!values.length)return '';
