@@ -6,7 +6,7 @@ import { ExposureChart } from "@/components/ExposureChart";
 
 export default function HomePage() {
   return <>
-    <section className="hero shell">
+    <section className="hero shell hero--one-screen">
       <div className="hero-copy"><div className="hero-meta"><span className="index-square">01 / 05</span><span>THE HEDGE OBSERVATORY</span><i/></div>
         <Reveal><h1 className="hero-title">THE ART<br/>OF STAYING<br/><span>NEUTRAL<span className="title-period">.</span></span></h1></Reveal>
         <Reveal delay={.16}><div className="hero-bottom-copy"><span className="ornament-asterisk">✳</span><div><p>Yield is visible.<br/><em>Risk should be too.</em></p><p className="hero-body">Explore the mechanics, measure the exposure, and challenge the assumptions behind delta-neutral strategies on Solana.</p><div className="hero-buttons"><Link href="/risk-lab" className="button-primary">ENTER THE RISK LAB <Icon name="arrowUp" size={18}/></Link><Link href="/about" className="text-link">OUR APPROACH <span>↗</span></Link></div></div></div></Reveal>

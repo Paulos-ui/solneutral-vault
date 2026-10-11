@@ -581,3 +581,68 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
   .funding-pulse-foot { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { .funding-bar { transition: none; } }
+
+
+/* Phase 2B — first-fold Hedge Observatory.
+   The slider remains part of the same component and now sits inside a
+   viewport-aware hero at desktop widths. On narrow screens, readability wins:
+   the section stacks without shrinking the control into an unusable widget. */
+@media (min-width: 1021px) {
+  .hero--one-screen {
+    padding-top: clamp(18px, 2.8vh, 32px);
+    column-gap: clamp(28px, 3.7vw, 66px);
+    align-items: stretch;
+  }
+  .hero--one-screen .hero-copy {
+    padding: 7px 0 12px;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .hero--one-screen .hero-title {
+    font-size: clamp(54px, 5.1vw, 92px);
+    line-height: .94;
+    margin: clamp(18px, 3vh, 31px) 0 clamp(13px, 2vh, 24px);
+    letter-spacing: -.087em;
+  }
+  .hero--one-screen .hero-bottom-copy {
+    grid-template-columns: 38px 1fr;
+    gap: 11px;
+    max-width: 475px;
+  }
+  .hero--one-screen .ornament-asterisk { font-size: 31px; }
+  .hero--one-screen .hero-bottom-copy p:first-child {
+    font-size: clamp(19px, 1.8vw, 24px);
+    margin-bottom: 10px;
+  }
+  .hero--one-screen .hero-bottom-copy .hero-body {
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: clamp(14px, 2vh, 23px);
+  }
+  .hero--one-screen .hero-buttons { gap: 19px; }
+  .hero--one-screen .hero-buttons .button-primary { min-height: 44px; }
+  .hero--one-screen .field-top { padding: 12px 17px; min-height: 42px; }
+  .hero--one-screen .field-canvas {
+    /* Reserve room for the hedge slider and both CTAs above the fold. */
+    height: clamp(260px, calc(100svh - 425px), 478px);
+  }
+  .hero--one-screen .field-control { padding: 13px 19px 14px; }
+  .hero--one-screen .field-control input[type="range"] { margin: 17px 0 11px; }
+  .hero--one-screen .control-head strong { font-size: 13px; }
+  .hero--one-screen .control-value { font-size: 25px; }
+  .hero--one-screen .field-bottom { padding: 11px 17px; min-height: 34px; }
+  .hero--one-screen .field-graphic { inset: 1% 0 0; }
+  .hero--one-screen .field-graphic svg { max-height: 100%; }
+  .hero--one-screen .hero-footnote {
+    margin-top: clamp(12px, 2vh, 20px);
+    padding: 12px 0 14px;
+  }
+}
+/* Compact laptop screens still show the interactive study at opening. */
+@media (min-width: 1021px) and (max-height: 740px) {
+  .hero--one-screen { padding-top: 14px; }
+  .hero--one-screen .hero-title { font-size: clamp(49px, 4.7vw, 75px); margin: 9px 0 12px; }
+  .hero--one-screen .hero-bottom-copy .hero-body { margin-bottom: 12px; }
+  .hero--one-screen .field-canvas { height: clamp(220px, calc(100svh - 400px), 350px); }
+  .hero--one-screen .hero-footnote { margin-top: 10px; padding: 9px 0; }
+}
