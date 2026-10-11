@@ -31,3 +31,10 @@ test('market validation happens before wrapping and withdraw checks balance',()=
  assert.match(adapter,/getUser\(0\)\.getTokenAmount/);
  assert.match(adapter,/action === 'unwrap'/);
 });
+test('SDK mint address is compared safely and the market PDA is derived by index',()=>{
+ const adapter=readFileSync(new URL('../lib/drift-devnet.ts',import.meta.url),'utf8');
+ assert.match(adapter,/market\.mint\.toBase58\(\) !== NATIVE_MINT\.toBase58\(\)/);
+ assert.match(adapter,/getSpotMarketPublicKeySync\(client\.program\.programId, market\.marketIndex\)/);
+ assert.doesNotMatch(adapter,/market\.mint\.equals\(/);
+ assert.doesNotMatch(adapter,/getAccountInfo\(market\.pubkey/);
+});

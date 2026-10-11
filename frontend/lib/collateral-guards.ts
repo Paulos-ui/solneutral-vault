@@ -2,7 +2,6 @@
 export interface SpotMarketLike {
   marketIndex: number;
   mint: { toBase58(): string };
-  pubkey: { toBase58(): string };
 }
 export const WRAPPED_SOL_MINT_ADDRESS = 'So11111111111111111111111111111111111111112';
 export const SPOT_MARKET_NOT_FOUND = 6087;

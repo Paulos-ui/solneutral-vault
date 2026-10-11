@@ -65,10 +65,18 @@ async function waitForVerifiedSignature(connection: Connection, signature: strin
 /** Verify on-chain wSOL market existence, ownership and mint before wallet funds move. */
 async function verifiedWrappedSolMarket(connection: Connection, client: Awaited<ReturnType<typeof openDevnetClient>>['client']) {
   const { NATIVE_MINT } = await import('@solana/spl-token');
+  const { getSpotMarketPublicKeySync } = await import('@drift-labs/sdk');
   const markets = client.getSpotMarketAccounts();
   const market = chooseWrappedSolMarket(markets);
-  if (!market.mint.equals(NATIVE_MINT)) throw new Error('The selected collateral market is not native wrapped SOL.');
-  const account = await connection.getAccountInfo(market.pubkey, 'confirmed');
+  // SDK subscription market types expose toBase58(), but do not guarantee the
+  // concrete PublicKey.equals() method. Compare their canonical mint addresses.
+  if (market.mint.toBase58() !== NATIVE_MINT.toBase58()) {
+    throw new Error('The selected collateral market is not native wrapped SOL.');
+  }
+  // Resolve the authoritative spot-market PDA from the program and market index.
+  // Do not rely on an SDK market object's optional/shape-only pubkey property.
+  const spotMarketPda = getSpotMarketPublicKeySync(client.program.programId, market.marketIndex);
+  const account = await connection.getAccountInfo(spotMarketPda, 'confirmed');
   if (!account || !account.owner.equals(client.program.programId)) {
     throw new Error('Drift wSOL spot market is missing or owned by a different program on devnet. Deposit and withdrawal disabled.');
   }
