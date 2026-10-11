@@ -106,11 +106,14 @@ export async function executeDriftDevnetAction(
       const market = client.getPerpMarketAccount(DRIFT_SOL_PERP_MARKET_INDEX);
       if (!market) throw new Error('SOL-PERP market unavailable on devnet.');
       const params = sdk.getLimitOrderParams({
+        marketType: sdk.MarketType.PERP,
         marketIndex: DRIFT_SOL_PERP_MARKET_INDEX,
         direction: action === 'long' ? sdk.PositionDirection.LONG : sdk.PositionDirection.SHORT,
         baseAssetAmount: new sdk.BN(units!.toString()),
         price: new sdk.BN(cap.toString()),
-        immediateOrCancel: true,
+        // Drift SDK v2.143 uses bitFlags for IOC; immediateOrCancel is not
+        // a supported property of getLimitOrderParams in this version.
+        bitFlags: sdk.OrderParamsBitFlag.ImmediateOrCancel,
       });
       signature = await client.placePerpOrder(params);
       description = `Submitted ${action.toUpperCase()} SOL-PERP limit IOC order on Drift devnet (1% oracle price guard; may not fill)`;
