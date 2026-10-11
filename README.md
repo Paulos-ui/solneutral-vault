@@ -26,6 +26,7 @@ SolNeutral V2 is an in-development, risk-intelligent Solana DeFi research experi
 | About / Field Manual / onboarding documentation | Implemented |
 | Guarded deposit entry point | Implemented — **deposits disabled** |
 | Drift funding observations for SOL-PERP | **Read-only conditional integration** — validates external indexed records and shows unavailable state otherwise |
+| Wallet Lens (`/wallet-lens`) | **Read-only conditional Solana RPC** — retrieves public SOL and canonical mainnet USDC balances, without signing |
 | Live Solana vault data and user transaction history | **Not connected** |
 | Wallet connection, secure vault accounting, keeper | **Not implemented in V2 yet** |
 | AI analyst with sourced calculations | **Planned** |
@@ -43,7 +44,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
+Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/wallet-lens`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
 
 ### Run checks
 
@@ -127,7 +128,7 @@ If replacing an existing deployment, don't redirect real-user deposit flows to t
 ## Development roadmap
 
 **Now — V2 design foundation:** Brand system, observatory, interactions, studio, educational docs, safe preview deployment.  
-**Now underway — sourced intelligence:** Read-only Drift funding observations with validation, caching and stale detection; next implement verified Solana on-chain reads, position-specific calculations, expanded risk monitoring, and data-integrity monitoring.  
+**Now underway — sourced intelligence:** Read-only Drift funding observations and public Solana wallet balance reads with validation and explicit unavailable states; next implement verified Drift user positions, position-specific calculations, expanded risk monitoring, and data-integrity monitoring.  
 **Then — protocol engineering:** Explicit strategy specification, vault share accounting, collateral controls, privileged-role analysis, simulated adversarial testing, and independent review.  
 **Finally — AI and execution:** Explainable agent with calculations/source attribution, opt-in notifications, monitored execution only after comprehensive risk work.
 
@@ -148,3 +149,16 @@ No open-source license is granted automatically by this README. Choose a license
 ## Funding signal integration (read-only)
 
 The Observatory calls `GET /api/market/funding` in the Next.js application. This route requests public `SOL-PERP` indexed market funding records from the [Drift Data API](https://data.api.drift.trade/playground), validates the record timestamps and numeric fields, converts the reported precision into normalized hourly percentages, and displays the latest verified observations and their data age. If that upstream indexer is unavailable, the UI clearly shows an unavailable state and **does not substitute placeholder metrics**. This integration uses public indexed **market** data, not connected wallets, settled PnL, realized vault returns, or on-chain transaction proofs. Data availability cannot be guaranteed without testing on the production Vercel environment. The annualized figure extrapolates an hourly observation and is not an APY forecast.
+
+
+## Phase 2C — Wallet Lens / Chain Intelligence
+
+Visit `/wallet-lens` to inspect **native SOL** and **canonical mainnet USDC** balances associated with any public Solana wallet address, alongside the existing read-only indexed Drift market funding panel. These are separate kinds of evidence: observing a wallet balance or general market rate does **not** establish vault earnings, risk neutrality, position PnL, or open Drift positions.
+
+### Setup
+
+In `frontend/`, run `npm install`, `npm test` and `npm run build`. Optional: set `SOLANA_RPC_URL` (server-side only) to an HTTPS mainnet RPC provider endpoint in local `.env.local` and Vercel environment variables. If unset, the application tries `https://api.mainnet-beta.solana.com`, which is rate limited and may be unsuitable for production. **Never prefix an RPC secret with `NEXT_PUBLIC_`**.
+
+Read-only API: `POST /api/chain/wallet` with `{ "address": "<public Solana key>" }`. Uses only `getBalance` and `getTokenAccountsByOwner` (canonical USDC mint). Input is checked for an actual decoded 32-byte public key, network errors degrade to partial/unavailable, and responses are `no-store`. This endpoint cannot send transactions.
+
+Recheck regularly for newer RPC values; no realtime socket, settled profit calculation or full-wallet valuation is claimed. No private keys or seed phrases should ever be provided. All account addresses are public.
