@@ -6,13 +6,14 @@
 import type { Connection } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
 import { prepareWrappedSolDeposit, ensureWrappedSolDestination, unwrapWalletWsol } from './native-sol';
-import { chooseWrappedSolMarket, meaningfulDriftError } from './collateral-guards';
+import { chooseWrappedSolMarket, chooseDevnetUsdcMarket, meaningfulDriftError } from './collateral-guards';
 import {
   assertDevnetGenesis, boundedLimitPrice, DEVNET_GENESIS_HASH,
-  validateDevnetAmount,
+  validateDevnetAmount, decimalToUnits,
 } from './devnet-execution';
 
 export type ExecutionAction = 'initialize' | 'deposit' | 'withdraw' | 'long' | 'short' | 'cancel' | 'unwrap';
+export type CollateralAsset = 'usdc' | 'wsol';
 export type ExecutionResult = { signature: string; confirmed: boolean; description: string; userAccount: string };
 
 async function openDevnetClient(connection: Connection, wallet: AnchorWallet) {
@@ -83,14 +84,113 @@ async function verifiedWrappedSolMarket(connection: Connection, client: Awaited<
   return market.marketIndex;
 }
 
+/** Find actual market + mint before considering any wallet token movement. */
+async function verifiedUsdcMarket(connection: Connection, client: Awaited<ReturnType<typeof openDevnetClient>>['client'], expectedMint: string) {
+  const { getSpotMarketPublicKeySync } = await import('@drift-labs/sdk');
+  const { PublicKey } = await import('@solana/web3.js');
+  const market = chooseDevnetUsdcMarket(client.getSpotMarketAccounts(), expectedMint);
+  const marketPda = getSpotMarketPublicKeySync(client.program.programId, market.marketIndex);
+  const chainMarket = await connection.getAccountInfo(marketPda, 'confirmed');
+  if (!chainMarket || !chainMarket.owner.equals(client.program.programId)) throw new Error('Drift devnet USDC market is not available on-chain. No deposit or withdrawal was sent.');
+  const mintPubkey = new PublicKey(expectedMint);
+  const mintInfo = await connection.getParsedAccountInfo(mintPubkey, 'confirmed');
+  if (!mintInfo.value || !('parsed' in mintInfo.value.data) || mintInfo.value.data.parsed?.type !== 'mint') throw new Error('USDC test-token mint cannot be verified on this devnet RPC.');
+  const decimals = Number(mintInfo.value.data.parsed.info.decimals);
+  if (decimals !== 6) throw new Error('Unexpected devnet quote-token decimals; USDC actions are disabled.');
+  return { marketIndex: market.marketIndex, mint: mintPubkey, decimals };
+}
+
+/** Read wallet-owned devnet USDC. This is NOT Drift-deposited collateral. */
+export async function inspectDriftDevnetUsdc(connection: Connection, wallet: AnchorWallet) {
+  assertDevnetGenesis(await connection.getGenesisHash());
+  const sdk = await import('@drift-labs/sdk');
+  const { PublicKey } = await import('@solana/web3.js');
+  const { getAssociatedTokenAddressSync, getAccount, TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
+  const config = sdk.initialize({ env: 'devnet' });
+  const mint = new PublicKey(config.USDC_MINT_ADDRESS);
+  const address = getAssociatedTokenAddressSync(mint, wallet.publicKey);
+  const tokenInfo = await connection.getAccountInfo(address, 'confirmed');
+  if (!tokenInfo) return { mint:mint.toBase58(), amount:0n };
+  if (!tokenInfo.owner.equals(TOKEN_PROGRAM_ID)) throw new Error('Wallet USDC token account uses an unsupported token program.');
+  const token = await getAccount(connection, address, 'confirmed');
+  if (!token.mint.equals(mint) || !token.owner.equals(wallet.publicKey)) throw new Error('Wallet USDC account mint/authority mismatch.');
+  return { mint:mint.toBase58(), amount:token.amount };
+}
+
+/** Explicit, read-only readiness check for the exact Drift devnet quote asset.
+ * Does not request a signature or move any tokens. The market mint is read
+ * from Drift's subscribed on-chain account, not inferred from a faucet name.
+ */
+export type DriftUsdcReadiness = {
+  mint: string;
+  marketIndex: number;
+  decimals: number;
+  walletTokenAccount: string;
+  walletAmount: string;
+  driftDepositedAmount: string | null;
+  userAccountExists: boolean;
+};
+
+export async function inspectDriftDevnetUsdcReadiness(
+  connection: Connection,
+  wallet: AnchorWallet,
+): Promise<DriftUsdcReadiness> {
+  const { client, sdk, config } = await openDevnetClient(connection, wallet);
+  try {
+    const spot = await verifiedUsdcMarket(connection, client, config.USDC_MINT_ADDRESS);
+    const { getAssociatedTokenAddressSync, getAccount } = await import('@solana/spl-token');
+    const { PublicKey } = await import('@solana/web3.js');
+    const associated = getAssociatedTokenAddressSync(spot.mint, wallet.publicKey);
+    const token = await getAccount(connection, associated, 'confirmed').catch((error: unknown) => {
+      // A missing ATA means zero wallet balance, but any other error must not
+      // be silently reinterpreted as a zero balance.
+      if (error && typeof error === 'object' && 'name' in error &&
+          (error.name === 'TokenAccountNotFoundError' || error.name === 'TokenInvalidAccountOwnerError')) return null;
+      throw error;
+    });
+    if (token && (!token.mint.equals(spot.mint) || !token.owner.equals(wallet.publicKey))) {
+      throw new Error('Wallet token account owner/mint mismatch. Collateral actions disabled.');
+    }
+    const userId = sdk.getUserAccountPublicKeySync(
+      new PublicKey(config.DRIFT_PROGRAM_ID), wallet.publicKey, 0,
+    );
+    const userInfo = await connection.getAccountInfo(userId, 'confirmed');
+    const exists = Boolean(userInfo);
+    let deposited: string | null = null;
+    if (exists) {
+      if (!userInfo!.owner.equals(new PublicKey(config.DRIFT_PROGRAM_ID))) {
+        throw new Error('Drift user account owner does not match the devnet program.');
+      }
+      if (!(await client.addUser(0))) {
+        throw new Error('Drift user account exists but could not be loaded. Retry the check.');
+      }
+      deposited = client.getUser(0).getTokenAmount(spot.marketIndex).toString();
+    }
+    return {
+      mint: spot.mint.toBase58(),
+      marketIndex: spot.marketIndex,
+      decimals: spot.decimals,
+      walletTokenAccount: associated.toBase58(),
+      walletAmount: (token?.amount ?? 0n).toString(),
+      driftDepositedAmount: deposited,
+      userAccountExists: exists,
+    };
+  } finally {
+    await client.unsubscribe().catch(() => undefined);
+  }
+}
+
 /** All actions require a connected wallet, devnet RPC, small validated sizes and separate user confirmation. */
 export async function executeDriftDevnetAction(
   connection: Connection,
   wallet: AnchorWallet,
   action: ExecutionAction,
   amountText: string,
+  collateralAsset: CollateralAsset = 'usdc',
 ): Promise<ExecutionResult> {
-  const units = action === 'initialize' || action === 'cancel' || action === 'unwrap' ? null : validateDevnetAmount(action, amountText);
+  const units = action === 'initialize' || action === 'cancel' || action === 'unwrap' ? null :
+    ((action === 'deposit' || action === 'withdraw') && collateralAsset === 'usdc' ? decimalToUnits(amountText, 6) : validateDevnetAmount(action, amountText));
+  if (units !== null && (action === 'deposit' || action === 'withdraw') && collateralAsset === 'usdc' && units > 100_000_000n) throw new Error('Demo limit: maximum 100 test USDC per transaction.');
   // Wallet-owned wSOL recovery does not need Drift market data or even a Drift User account.
   if (action === 'unwrap') {
     const outcome = await unwrapWalletWsol(connection, wallet);
@@ -113,8 +213,11 @@ export async function executeDriftDevnetAction(
     }
     // Validate market BEFORE preparing any wallet-owned wSOL, preventing stranded
     // collateral when the selected spot market does not exist on Drift devnet.
-    const spotIndex = action === 'deposit' || action === 'withdraw'
-      ? await verifiedWrappedSolMarket(connection, client) : null;
+    const spot = action === 'deposit' || action === 'withdraw'
+      ? (collateralAsset === 'usdc'
+        ? await verifiedUsdcMarket(connection, client, config.USDC_MINT_ADDRESS)
+        : { marketIndex: await verifiedWrappedSolMarket(connection, client), mint: null, decimals: 9 }) : null;
+    const spotIndex = spot?.marketIndex ?? null;
     // Resolve the actual subscribed SOL perpetual market rather than assuming
     // a devnet index that may have changed with deployments/configuration.
     const perpSelection = action === 'long' || action === 'short' || action === 'cancel'
@@ -130,24 +233,42 @@ export async function executeDriftDevnetAction(
       [signature] = await client.initializeUserAccount();
       description = 'Drift devnet user-account initialization';
     } else if (action === 'deposit') {
-      const { tokenAccount } = await prepareWrappedSolDeposit(connection, wallet, units!);
+      let tokenAccount;
+      if (collateralAsset === 'usdc') {
+        const { getAssociatedTokenAddressSync, getAccount } = await import('@solana/spl-token');
+        tokenAccount = getAssociatedTokenAddressSync(spot!.mint!, wallet.publicKey);
+        const token = await getAccount(connection, tokenAccount, 'confirmed').catch(() => null);
+        if (!token || !token.owner.equals(wallet.publicKey) || !token.mint.equals(spot!.mint!) || token.amount < units!)
+          throw new Error('Not enough correctly minted test USDC in this wallet. Obtain the exact Drift devnet USDC mint shown in Collateral and refresh. No transaction was sent.');
+      } else {
+        ({ tokenAccount } = await prepareWrappedSolDeposit(connection, wallet, units!));
+      }
       try {
         signature = await client.deposit(new sdk.BN(units!.toString()), spotIndex!, tokenAccount, 0);
       } catch (error) {
-        throw new Error(`Drift did not confirm the collateral deposit. Any wSOL prepared in your wallet remains yours and can be unwrapped in the Collateral tab. ${meaningfulDriftError(error)}`);
+        throw new Error(`Drift deposit failed before a successful confirmation. ${collateralAsset === 'wsol' ? 'Any prepared wSOL remains in your wallet and can be unwrapped. ' : 'Wallet-owned USDC remains in your wallet unless an on-chain transaction proves otherwise. '}${meaningfulDriftError(error)}`);
       }
-      description = 'Deposited verified wSOL collateral into your personal Drift devnet account';
+      description = `Submitted ${collateralAsset === 'usdc' ? 'USDC' : 'wSOL'} collateral to your personal Drift devnet account`;
     } else if (action === 'withdraw') {
       // reduceOnly=true: never create a spot borrow to fund a withdrawal.
       // Fail early if account has no SOL deposit balance. Protocol margin rules
       // may still prevent the requested amount even when balance is sufficient.
       const available = client.getUser(0).getTokenAmount(spotIndex!);
       if (!available || BigInt(available.toString()) < units!) {
-        throw new Error('Your Drift account does not have this much deposited wSOL. No withdrawal was sent.');
+        throw new Error(`Your Drift account has insufficient deposited ${collateralAsset === 'usdc' ? 'USDC' : 'wSOL'} for this withdrawal. No transaction was sent.`);
       }
-      const { tokenAccount } = await ensureWrappedSolDestination(connection, wallet);
+      let tokenAccount;
+      if (collateralAsset === 'usdc') {
+        const { getAssociatedTokenAddressSync } = await import('@solana/spl-token');
+        tokenAccount = getAssociatedTokenAddressSync(spot!.mint!, wallet.publicKey);
+        if (!(await connection.getAccountInfo(tokenAccount, 'confirmed'))) {
+          throw new Error('Create your wallet devnet USDC token account before withdrawal (receive a small amount of the correct test USDC first). No withdrawal was sent.');
+        }
+      } else {
+        ({ tokenAccount } = await ensureWrappedSolDestination(connection, wallet));
+      }
       signature = await client.withdraw(new sdk.BN(units!.toString()), spotIndex!, tokenAccount, true, 0);
-      description = 'Withdrew wSOL collateral to your wallet token account (unwrap separately to receive native SOL)';
+      description = `Withdrew ${collateralAsset === 'usdc' ? 'USDC' : 'wSOL'} collateral to your wallet's matching token account`;
     } else if (action === 'cancel') {
       signature = await client.cancelOrders(sdk.MarketType.PERP, perpIndex!);
       description = 'Requested cancellation of outstanding SOL-PERP devnet orders';

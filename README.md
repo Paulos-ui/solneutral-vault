@@ -1,3 +1,7 @@
+# SolNeutral V7.4 — Verified collateral readiness
+
+**Devnet research build — not an audited deposit vault.** New options: verified matching Drift devnet USDC collateral, wSOL fallback when on-chain market supports it, full-screen SOL reference chart, and conversational Claude assistant with token-gated server-side API. Actual wallet-signed execution remains to be verified. See `V7_3_DEMO_INSTRUCTIONS.md`.
+
 # SolNeutral
 
 **A more transparent way to hedge on Solana.**
@@ -7,6 +11,10 @@ SolNeutral is a wallet-first DeFi research and devnet execution workspace for un
 **Founder:** Web3 supporter · **X:** [@instators](https://x.com/instators) · **GitHub:** [paulos-ui](https://github.com/Paulos-ui) · **Ecosystem:** Solana, Drift
 
 > **Status:** Research/development preview with wallet-signed **Drift devnet** execution. No production SolNeutral pooled vault, mainnet deployment or audited deposit service. This project is not endorsed by Colosseum or Superteam Nigeria.
+
+## Collateral diagnosis in V7.4
+
+Trade Lab → Collateral → USDC → **Check collateral** verifies the subscribed Drift spot market, mint account, wallet USDC ATA balance and on-chain Drift deposited amount before you attempt any deposit or withdrawal. It will explicitly show when the configured USDC mint is not present in your wallet. Do not assume generic devnet USDC faucet tokens have the same mint. A successful preflight does not prove signed transactions will succeed. Details: [`docs/V7_4_COLLATERAL_READINESS.md`](docs/V7_4_COLLATERAL_READINESS.md).
 
 ## What makes SolNeutral useful
 

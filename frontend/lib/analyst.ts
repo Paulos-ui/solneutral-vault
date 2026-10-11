@@ -2,11 +2,11 @@ import { analyzeSnapshot, type IntelligenceSnapshot } from './intelligence.ts';
 import { calculatePositionStress } from './position-risk.ts';
 
 export function isValidQuestion(question: unknown): question is string {
- return typeof question==='string' && question.trim().length>=8 && question.length<=500 && !/[\u0000-\u001f]/.test(question);
+ return typeof question==='string' && question.trim().length>=1 && question.length<=1200 && !/[\u0000-\u001f]/.test(question);
 }
 
 export function buildResearchBrief(snapshot: IntelligenceSnapshot, question:string){
- if(!isValidQuestion(question))throw new RangeError('Question must be 8–500 characters');
+ if(!isValidQuestion(question))throw new RangeError('Question must be 1–1200 characters');
  const results=calculatePositionStress(snapshot.assumptions);
  const findings=analyzeSnapshot(snapshot);
  const min=Math.min(...results.shocks.map(s=>s.estimatedBufferUsd));

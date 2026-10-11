@@ -31,3 +31,14 @@ export function meaningfulDriftError(err: unknown): string {
   }
   return message.slice(0, 560);
 }
+
+
+/** Drift quote collateral is different from native SOL. The mint MUST match the active SDK config. */
+export function chooseDevnetUsdcMarket(markets: readonly SpotMarketLike[], configuredMint: string): SpotMarketLike {
+  if (typeof configuredMint !== 'string' || configuredMint.length < 32) throw new Error('Drift SDK has no valid configured devnet USDC mint.');
+  const matched = markets.filter(m => m.mint.toBase58() === configuredMint);
+  if (matched.length !== 1) throw new Error('Drift devnet USDC collateral market is missing or ambiguous. No tokens were transferred. Check the connected cluster and SDK market configuration.');
+  const market = matched[0];
+  if (!Number.isSafeInteger(market.marketIndex) || market.marketIndex < 0) throw new Error('Invalid Drift USDC market index.');
+  return market;
+}

@@ -7,7 +7,7 @@ import { SolPriceChart } from './SolPriceChart';
 import { inspectWrappedSol } from '@/lib/native-sol';
 import { Icon } from './Icons';
 import { assertDevnetGenesis, explorerTransactionUrl, validateDevnetAmount } from '@/lib/devnet-execution';
-import { executeDriftDevnetAction, inspectDriftDevnetAccount, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
+import { executeDriftDevnetAction, inspectDriftDevnetAccount, inspectDriftDevnetUsdc, inspectDriftDevnetUsdcReadiness, type DriftUsdcReadiness, type CollateralAsset, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
 
 type ConnectionState = 'idle'|'checking'|'verified'|'unavailable';
 type DeskTab = 'trade'|'collateral'|'account'|'orders';
@@ -36,6 +36,12 @@ export function DriftTradingLab() {
   const [genesis,setGenesis]=useState('');
   const [balance,setBalance]=useState<number|null>(null);
   const [wrappedBalance,setWrappedBalance]=useState<bigint|null>(null);
+  const [usdcBalance,setUsdcBalance]=useState<bigint|null>(null);
+  const [usdcMint,setUsdcMint]=useState('');
+  const [usdcReadiness,setUsdcReadiness]=useState<DriftUsdcReadiness|null>(null);
+  const [usdcChecking,setUsdcChecking]=useState(false);
+  const [usdcCheckError,setUsdcCheckError]=useState('');
+  const [collateralAsset,setCollateralAsset]=useState<CollateralAsset>('usdc');
   const [driftAccount,setDriftAccount]=useState<{address:string;exists:boolean}|null>(null);
   const [action,setAction]=useState<ExecutionAction>('long');
   const [tab,setTab]=useState<DeskTab>('trade');
@@ -51,8 +57,8 @@ export function DriftTradingLab() {
   const ready=Boolean(connected&&publicKey&&signer&&network==='verified'&&!busy&&enableExecution&&(action==='unwrap'?wrappedBalance!==null&&wrappedBalance>0n:driftAccount&&(action==='initialize'?!driftAccount.exists:driftAccount.exists)));
 
   const refresh=useCallback(async()=>{
-    if(!connected||!publicKey||!signer){setNetwork('idle');setBalance(null);setDriftAccount(null);setWrappedBalance(null);return;}
-    setNetwork('checking');setError('');setDriftAccount(null);
+    if(!connected||!publicKey||!signer){setNetwork('idle');setBalance(null);setDriftAccount(null);setWrappedBalance(null);setUsdcBalance(null);setUsdcReadiness(null);return;}
+    setNetwork('checking');setError('');setDriftAccount(null);setUsdcReadiness(null);
     try{
       const hash=await connection.getGenesisHash();
       setGenesis(hash);
@@ -61,6 +67,7 @@ export function DriftTradingLab() {
       setBalance(lamports/1e9);
       try { const wsol = await inspectWrappedSol(connection,publicKey); setWrappedBalance(wsol.amount); }
       catch(err) { setWrappedBalance(null); setError(`Cannot verify wSOL balance: ${readableError(err)}`); }
+      try{const quote=await inspectDriftDevnetUsdc(connection,signer);setUsdcBalance(quote.amount);setUsdcMint(quote.mint)}catch{setUsdcBalance(null);setUsdcMint('');}
       setNetwork('verified');
       // Account read is independent; a temporary Drift SDK/indexer problem must not fake network status.
       try{
@@ -81,18 +88,37 @@ export function DriftTradingLab() {
   // Only react when the account's existence changes, not on every tab click.
   }, [connected, network, driftAccount?.exists]);
 
-  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':'0.05');}
+  async function checkUsdcCollateral(){
+    if (!signer || !connected || network !== 'verified') return;
+    setUsdcChecking(true); setUsdcCheckError(''); setUsdcReadiness(null);
+    try {
+      const state = await inspectDriftDevnetUsdcReadiness(connection, signer);
+      setUsdcReadiness(state);
+      setUsdcBalance(BigInt(state.walletAmount));
+      setUsdcMint(state.mint);
+    } catch (err) {
+      setUsdcCheckError(readableError(err));
+    } finally {
+      setUsdcChecking(false);
+    }
+  }
+  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':collateralAsset==='usdc'?'5':'0.05');}
   async function submit(){
     if(!ready||!signer) return;
     if(!approved){setError('Review the action and tick the acknowledgement before signing.');return;}
-    if(!noAmount){try{validateDevnetAmount(action as 'deposit'|'withdraw'|'long'|'short',amount);}catch(err){setError(readableError(err));return;}}
+    if(!noAmount){try{if((action==='deposit'||action==='withdraw')&&collateralAsset==='usdc'){const n=Number(amount);if(!Number.isFinite(n)||n<=0||n>100||!/^(?:\d+)(?:\.\d{1,6})?$/.test(amount))throw Error('Enter 0–100 test USDC, up to six decimals.');}else validateDevnetAmount(action as 'deposit'|'withdraw'|'long'|'short',amount);}catch(err){setError(readableError(err));return;}}
     setBusy(true);setError('');setResult(null);setApproved(false);
     setPendingStep('Checking devnet and preparing Drift transaction…');
     try{
-      const receipt=await executeDriftDevnetAction(connection,signer,action,amount);
+      const receipt=await executeDriftDevnetAction(connection,signer,action,amount,collateralAsset);
       setResult(receipt);
       setPendingStep(receipt.confirmed?'Confirmed on devnet. Read the signature below.':'Submitted; network confirmation is still unverified.');
       await refresh();
+      // New balance must be checked against the chain separately after the
+      // receipt, rather than inferred from the transaction submission.
+      if ((action === 'deposit' || action === 'withdraw') && collateralAsset === 'usdc') {
+        await checkUsdcCollateral();
+      }
     }catch(err){setError(readableError(err));setPendingStep('Action was not verified as successful.');}
     finally{setBusy(false);}
   }
@@ -122,12 +148,26 @@ export function DriftTradingLab() {
        <div className="sn-v6-ticket-header"><div><span>YOUR ORDER TICKET</span><h2>{tab==='trade'?'Place an order':tab==='collateral'?'Manage collateral':tab==='account'?'Drift account':'Manage orders'}</h2></div><span className="sn-v6-test-pill">TEST ASSETS ONLY</span></div>
        {tab==='trade'&&<div className="sn-v6-direction" role="group" aria-label="Order side"><button type="button" onClick={()=>choose('long')} className={action==='long'?'buy active':'buy'} aria-pressed={action==='long'}>↗ Long</button><button type="button" onClick={()=>choose('short')} className={action==='short'?'sell active':'sell'} aria-pressed={action==='short'}>↘ Short</button></div>}
        {tab==='collateral'&&<div className="sn-v6-direction sn-v8-collateral-modes" role="group" aria-label="Collateral action"><button type="button" onClick={()=>choose('deposit')} className={action==='deposit'?'buy active':'buy'} aria-pressed={action==='deposit'}>↓ Deposit</button><button type="button" onClick={()=>choose('withdraw')} className={action==='withdraw'?'sell active':'sell'} aria-pressed={action==='withdraw'}>↑ Withdraw</button><button type="button" onClick={()=>choose('unwrap')} className={action==='unwrap'?'active':''} aria-pressed={action==='unwrap'}>↩ Unwrap wSOL</button></div>}
+       {tab==='collateral'&&action!=='unwrap'&&<div className="sn-v73-asset-picker"><span>COLLATERAL ASSET</span><div role="group" aria-label="Choose Drift devnet collateral"><button type="button" aria-pressed={collateralAsset==='usdc'} className={collateralAsset==='usdc'?'active':''} onClick={()=>{setCollateralAsset('usdc');setAmount('5');setApproved(false);setError('')}}>USDC · preferred</button><button type="button" aria-pressed={collateralAsset==='wsol'} className={collateralAsset==='wsol'?'active':''} onClick={()=>{setCollateralAsset('wsol');setAmount('0.05');setApproved(false);setError('')}}>wSOL · if supported</button></div><small>USDC wallet balance: {usdcBalance===null?'Not verified':(Number(usdcBalance)/1e6).toFixed(2)} · Drift-configured mint: {usdcMint||'Checking…'}</small></div>}
+       {tab==='collateral' && action!=='unwrap' && collateralAsset==='usdc' &&
+         <div className="sn-v74-collateral-check" role="region" aria-label="USDC collateral readiness">
+           <div className="sn-v74-check-heading"><div><strong>Verify USDC deposit & withdrawal readiness</strong><small>Checks the actual Drift spot market, matching token mint, wallet USDC and deposited Drift balance. No signature required.</small></div><button type="button" onClick={() => void checkUsdcCollateral()} disabled={!connected || network!=='verified' || busy || usdcChecking}>{usdcChecking?'Checking…':'Check collateral ↻'}</button></div>
+           {usdcCheckError && <p role="alert" className="trade-warning">{usdcCheckError}</p>}
+           {usdcReadiness && <div className="sn-v74-check-result">
+             <p><strong>Market verified:</strong> Spot #{usdcReadiness.marketIndex} · {usdcReadiness.decimals} decimals</p>
+             <p><strong>Mint:</strong> <code>{usdcReadiness.mint}</code></p>
+             <p><strong>Wallet USDC:</strong> {(Number(BigInt(usdcReadiness.walletAmount))/10**usdcReadiness.decimals).toLocaleString('en-US',{maximumFractionDigits:6})}</p>
+             <p><strong>Deposited in Drift:</strong> {usdcReadiness.driftDepositedAmount===null?'Drift account missing':(Number(BigInt(usdcReadiness.driftDepositedAmount))/10**usdcReadiness.decimals).toLocaleString('en-US',{maximumFractionDigits:6})}</p>
+             {!usdcReadiness.userAccountExists ? <p className="trade-warning">Initialize the Drift account before collateral operations.</p> : BigInt(usdcReadiness.walletAmount)===0n && action==='deposit' ? <p className="trade-warning">Your wallet has 0 of the EXACT devnet USDC mint used by this market. Acquire matching test USDC first. Ordinary devnet SOL, Circle USDC, and other faucet tokens may use different mints and cannot be substituted.</p> : <p>Collateral market verified. Signing may proceed, subject to your balance and Drift's margin rules.</p>}
+           </div>}
+           {!usdcReadiness && !usdcChecking && !usdcCheckError && <small>Run this check before attempting any transfer. The app will also check inside the signing flow.</small>}
+         </div>}
        {tab==='account'&&<div className="sn-v6-action-info"><strong>{driftAccount?.exists?'Drift account found':'Initialize your Drift user account'}</strong><p>{driftAccount?.exists?'Your derived Drift User account exists on devnet.':'Read the acknowledgement below and click Initialize Drift Account to open a Phantom/Solflare signing request. Test SOL is required for account creation fees.'}</p></div>}
        {tab==='orders'&&<div className="sn-v6-action-info"><strong>Cancel SOL-PERP orders</strong><p>This cancels outstanding orders in your personal Drift User account. It does not close an open position. Open-order counts are not yet independently decoded.</p></div>}
-       {!noAmount&&<label className="sn-v6-trade-amount"><span>SIZE <small>{tab==='trade'?'BASE SOL':'DEVNET SOL'}</small></span><input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} value={amount} onChange={e=>{setAmount(e.target.value);setApproved(false);}} placeholder="0.05" /><span className="sn-v6-trade-limit">{tab==='trade'?'Maximum 0.1 SOL base per order':'Maximum 0.5 SOL per transaction'}</span></label>}
-       <div className="sn-v6-ticket-facts"><div><span>Venue</span><strong>Drift · devnet</strong></div><div><span>Execution</span><strong>{tab==='trade'?'Oracle-bounded resting limit':tab==='collateral'?(action==='unwrap'?'Close wallet wSOL account':'Verified market · wallet-owned wSOL'):'Wallet-signed transaction'}</strong></div><div><span>Account</span><strong>{driftAccount?.exists?'Verified existing':driftAccount===null?'Unverified':'Not initialized'}</strong></div></div>
+       {!noAmount&&<label className="sn-v6-trade-amount"><span>SIZE <small>{tab==='trade'?'BASE SOL':collateralAsset==='usdc'?'TEST USDC':'DEVNET SOL'}</small></span><input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} value={amount} onChange={e=>{setAmount(e.target.value);setApproved(false);}} placeholder="0.05" /><span className="sn-v6-trade-limit">{tab==='trade'?'Maximum 0.1 SOL base per order':collateralAsset==='usdc'?'Maximum 100 devnet USDC':'Maximum 0.5 devnet SOL'}</span></label>}
+       <div className="sn-v6-ticket-facts"><div><span>Venue</span><strong>Drift · devnet</strong></div><div><span>Execution</span><strong>{tab==='trade'?'Oracle-bounded resting limit':tab==='collateral'?(action==='unwrap'?'Close wallet wSOL account':'Verified market · wallet-owned token'):'Wallet-signed transaction'}</strong></div><div><span>Account</span><strong>{driftAccount?.exists?'Verified existing':driftAccount===null?'Unverified':'Not initialized'}</strong></div></div>
        {tab==='trade'&&<p className="sn-v6-exec-note">This is a resting LIMIT order with a 1% oracle price guard, not an instant trade. If it does not fill, it may remain open until cancelled in Orders. A confirmed signature never proves a fill.</p>}
-       {tab==='collateral'&&<div className="sn-v8-wsol-context"><div><span>WALLET wSOL · VERIFIED DEVNET BALANCE</span><strong>{wrappedBalance===null?'Unavailable':(Number(wrappedBalance)/1e9).toLocaleString('en-US',{maximumFractionDigits:9})+' wSOL'}</strong></div><p>{action==='deposit'?'Before any wrapping, SolNeutral checks the actual Drift wSOL spot market. Existing wallet wSOL is reused so you are not asked to wrap the same amount twice.':action==='withdraw'?'Drift withdrawals return wSOL to your wallet; account deposits and margin availability are checked before signing.':'Recovery: closes your wallet-owned wSOL token account and returns its ENTIRE balance and rent to native SOL. This does not withdraw any funds deposited inside Drift.'}</p></div>}
+       {tab==='collateral'&&<div className="sn-v8-wsol-context"><div><span>WALLET wSOL · VERIFIED DEVNET BALANCE</span><strong>{wrappedBalance===null?'Unavailable':(Number(wrappedBalance)/1e9).toLocaleString('en-US',{maximumFractionDigits:9})+' wSOL'}</strong></div><p>{action==='deposit'?(collateralAsset==='usdc'?'Devnet USDC (not native SOL) is required. SolNeutral checks the mint, actual Drift spot market and wallet token balance BEFORE signing. Get matching test USDC from a supported Drift devnet faucet; no minting occurs inside SolNeutral.':'Drift wSOL market must exist before any wrapping. Unsupported markets are disabled; use devnet USDC when available.'):action==='withdraw'?(collateralAsset==='usdc'?'Withdraw deposited devnet USDC to your existing wallet token account, subject to verified available deposits and Drift margin rules.':'Withdraw deposited wSOL to your wallet, then unwrap separately.'): 'Recovery: closes your wallet-owned wSOL token account and returns its ENTIRE balance and rent to native SOL. This does not withdraw any funds deposited inside Drift.'}</p></div>}
        <label className="sn-v6-trade-consent"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I reviewed this devnet action. Orders may remain open until cancelled; all actions require my wallet signature with test assets.</span></label>
        <button type="button" className="trade-submit" disabled={!ready||!approved} onClick={()=>void submit()}>{busy?'Awaiting wallet approval…':action === 'initialize' ? 'Initialize Drift Account ↗' : `Review & sign ${action}`} <Icon name="arrowUp" size={16}/></button>
        {!connected&&<div className="sn-v6-trade-connect"><ConnectWallet/><small>Connect Phantom or Solflare to continue.</small></div>}
@@ -139,7 +179,7 @@ export function DriftTradingLab() {
        {result&&<div className="trade-receipt"><strong>{result.confirmed?'Confirmed on devnet':'Confirmation unverified'}</strong><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} rel="noopener noreferrer" target="_blank">View transaction ↗</a><code>{result.signature}</code></div>}
       </section>
       <aside className="sn-v6-trade-side">
-        <section className="sn-v6-side-card"><div className="sn-v6-side-head"><h3>Account overview</h3><span>{network==='verified'?'DEVNET':'NOT VERIFIED'}</span></div><div className="sn-v6-account-number"><small>NATIVE SOL · WALLET</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})} <em>SOL</em></strong></div><div className="sn-v6-ticket-facts"><div><span>Wallet</span><strong>{publicKey?compact(publicKey.toBase58()):'Not connected'}</strong></div><div><span>Wrapped SOL · wallet</span><strong>{wrappedBalance===null?'Unverified':`${(Number(wrappedBalance)/1e9).toFixed(6)} wSOL`}</strong></div><div><span>Drift account</span><strong>{driftAccount?(driftAccount.exists?'Exists':'Not initialized'):'Not verified'}</strong></div><div><span>Trading collateral / PnL</span><strong>Not decoded</strong></div></div><div className="sn-v6-side-note">Native SOL and wallet-owned wSOL are separate from your deposited Drift collateral. If a deposit fails after wrapping, select Collateral → Unwrap wSOL to recover wallet-owned wSOL.</div></section>
+        <section className="sn-v6-side-card"><div className="sn-v6-side-head"><h3>Account overview</h3><span>{network==='verified'?'DEVNET':'NOT VERIFIED'}</span></div><div className="sn-v6-account-number"><small>NATIVE SOL · WALLET</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})} <em>SOL</em></strong></div><div className="sn-v6-ticket-facts"><div><span>Wallet</span><strong>{publicKey?compact(publicKey.toBase58()):'Not connected'}</strong></div><div><span>Wrapped SOL · wallet</span><strong>{wrappedBalance===null?'Unverified':`${(Number(wrappedBalance)/1e9).toFixed(6)} wSOL`}</strong></div><div><span>Devnet USDC · wallet</span><strong>{usdcBalance===null?'Unverified':`${(Number(usdcBalance)/1e6).toFixed(2)} USDC`}</strong></div><div><span>Drift account</span><strong>{driftAccount?(driftAccount.exists?'Exists':'Not initialized'):'Not verified'}</strong></div><div><span>Trading collateral / PnL</span><strong>Not decoded</strong></div></div><div className="sn-v6-side-note">Native SOL and wallet-owned wSOL are separate from your deposited Drift collateral. If a deposit fails after wrapping, select Collateral → Unwrap wSOL to recover wallet-owned wSOL.</div></section>
         <section className="sn-v6-side-card sn-v6-safety"><div className="sn-v6-side-head"><h3>Execution safety</h3><Icon name="shield" size={19}/></div><div className="sn-v6-evidence-row"><span>Network</span><strong>{network==='verified'?'VERIFIED':'CHECK REQUIRED'}</strong></div><div className="sn-v6-evidence-row"><span>Mainnet</span><strong>DISABLED</strong></div><div className="sn-v6-evidence-row"><span>Vault deposits</span><strong>NOT ENABLED</strong></div><a target="_blank" rel="noopener noreferrer" href="https://faucet.solana.com/">Get devnet test SOL ↗</a></section>
       </aside>
     </div>

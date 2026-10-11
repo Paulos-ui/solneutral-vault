@@ -1,12 +1,7 @@
-# SolNeutral V7.2 cumulative release
+# SolNeutral V7.4 — Collateral Readiness
 
-- Built upon complete SolNeutral V7.1 source, overlaid with V7.1.1 build fix.
-- Corrects the observed `InvalidOrderIOC (6050 / 0x17a2)` order construction using a bounded, potentially resting limit order.
-- Adds a positive free-collateral check before a new order, without fabricating collateral balances.
-- Updates the trading consent and order receipt to describe resting-order behavior and cancellation.
-- Adds historical chart controls for browsing verified SOL/USD candles. Preserves automatic refresh and timeframe controls.
-- Makes the dashboard's unverified Drift account card compact, while retaining funding refresh.
-- Adds validated funding API route fallback with no invented rates.
-- Updates regression tests, deployment docs, old program-ID discrepancy notes, and safe devnet/testnet guidance.
+Complete cumulative project. Direct-root ZIP. Devnet-only.
 
-**Cannot yet claim:** fully tested mainnet vault, verified deposit/withdrawal, actual fill, liquidation price, portfolio PnL or live testnet Drift deployment. This release is a **research/devnet execution upgrade**, not an audit or a production trading certification.
+Changes: read-only verified Drift spot market + USDC mint + wallet ATA balance + deposited amount readiness panel; corrected withdrawal asset-specific error; regression tests; deployment docs.
+
+No new AI or private key needed; never use real funds. No confirmed wallet-signed end-to-end deposit or withdrawal exists in the release validation. Do not describe these as proven functional before signing on devnet and verifying balances.

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
-import { chooseWrappedSolMarket, missingWrappedSolTopup, meaningfulDriftError } from '../lib/collateral-guards.ts';
+import { chooseWrappedSolMarket, chooseDevnetUsdcMarket, missingWrappedSolTopup, meaningfulDriftError } from '../lib/collateral-guards.ts';
 const native='So11111111111111111111111111111111111111112';
 const market=(index,mint)=>({marketIndex:index,mint:{toBase58:()=>mint},pubkey:{toBase58:()=>`market-${index}`}});
 
@@ -41,4 +41,17 @@ test('SDK mint address is compared safely and the market PDA is derived by index
 
 test('0x17a2 is explained as InvalidOrderIOC, not a program-id problem',()=>{
  assert.match(meaningfulDriftError(new Error('custom program error: 0x17a2')),/InvalidOrderIOC, 6050/);
+});
+
+test('devnet USDC collateral only selects the configured mint',()=>{
+ const quote='UsdcTestMintAddressMustMatchConfiguredSdkMint123';
+ assert.equal(chooseDevnetUsdcMarket([market(0,quote),market(1,native)],quote).marketIndex,0);
+ assert.throws(()=>chooseDevnetUsdcMarket([market(0,native)],quote),/missing or ambiguous/);
+ assert.throws(()=>chooseDevnetUsdcMarket([market(0,quote),market(3,quote)],quote),/missing or ambiguous/);
+});
+test('quote collateral validates before calling wallet wrap code',()=>{
+ const adapter=readFileSync(new URL('../lib/drift-devnet.ts',import.meta.url),'utf8');
+ assert.match(adapter,/verifiedUsdcMarket\(connection, client, config.USDC_MINT_ADDRESS\)/);
+ assert.match(adapter,/token.amount < units!/);
+ assert.match(adapter,/collateralAsset === 'usdc'/);
 });

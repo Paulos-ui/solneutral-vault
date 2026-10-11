@@ -16,6 +16,7 @@ export function SolPriceChart(){
  const [error,setError]=useState('');
  const [active,setActive]=useState<number|null>(null);
  const [offset,setOffset]=useState(0);
+ const [expanded,setExpanded]=useState(false);
  const VISIBLE=70;
  const refresh=useCallback(async(signal:AbortSignal)=>{
   try{
@@ -26,6 +27,7 @@ export function SolPriceChart(){
   }catch(e){if(!signal.aborted){setResponse(null);setError(e instanceof Error?e.message:'Market data unavailable');}}
   finally{if(!signal.aborted)setLoading(false);}
  },[interval]);
+ useEffect(()=>{if(!expanded)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpanded(false)};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[expanded]);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setActive(null);setOffset(0);void refresh(controller.signal);const timer=setInterval(()=>void refresh(controller.signal),30000);return()=>{clearInterval(timer);controller.abort();};},[refresh]);
  const allCandles=response?.candles??[];
  const candles=useMemo(()=>solVisibleWindow(allCandles,offset,VISIBLE),[allCandles,offset]);
@@ -44,10 +46,10 @@ export function SolPriceChart(){
  const last=allCandles[allCandles.length-1];
  const selected=active===null?(candles[candles.length-1]??last):candles[active]??last;
  const status=response?.status??'unavailable';
- return <section className="sn-v7-chart" aria-label="SOL USD market reference chart">
+ return <section className={`sn-v7-chart ${expanded?'sn-v73-chart-expanded':''}`} aria-label="SOL USD market reference chart">
   <div className="sn-v7-chart-head">
    <div><div className="sn-v7-pair"><span className="sn-v7-coin">◎</span><div><strong>SOL / USD</strong><small>Coinbase spot reference · Drift execution remains devnet</small></div></div><div className="sn-v7-quote"><strong>{last?formatPrice(last.close):'—'}</strong><span className={response?.changePct!==undefined&&response.changePct!==null&&response.changePct<0?'down':'up'}>{response?.changePct===undefined||response.changePct===null?'No verified change':`${response.changePct>=0?'+':''}${response.changePct.toFixed(2)}% last bar`}</span></div></div>
-   <div className="sn-v7-chart-controls"><div className="sn-v7-chart-intervals" aria-label="Candlestick timeframe">{INTERVALS.map(i=><button type="button" aria-pressed={interval===i} className={interval===i?'active':''} key={i} onClick={()=>{setChartInterval(i);setOffset(0);}}>{i}</button>)}</div><span className={`sn-v7-chart-status ${status}`}>{loading?'Loading':status==='observed'?'Updated':status==='stale'?'Delayed':'Unavailable'}</span></div>
+   <div className="sn-v7-chart-controls"><button type="button" className="sn-v73-expand" onClick={()=>setExpanded(v=>!v)} aria-pressed={expanded}>{expanded?'× Close full chart':'⤢ Open full chart'}</button><div className="sn-v7-chart-intervals" aria-label="Candlestick timeframe">{INTERVALS.map(i=><button type="button" aria-pressed={interval===i} className={interval===i?'active':''} key={i} onClick={()=>{setChartInterval(i);setOffset(0);}}>{i}</button>)}</div><span className={`sn-v7-chart-status ${status}`}>{loading?'Loading':status==='observed'?'Updated':status==='stale'?'Delayed':'Unavailable'}</span></div>
   </div>
   <div className="sn-v72-chart-history" role="group" aria-label="Browse SOL price history">
     <button type="button" disabled={!canBack} onClick={()=>{setOffset(v=>shiftSolWindow(allCandles.length,v,20,VISIBLE));setActive(null);}} aria-label="Older candles">← Older</button>
