@@ -11,8 +11,8 @@ import { executeDriftDevnetAction, inspectDriftDevnetAccount, type ExecutionActi
 type ConnectionState = 'idle'|'checking'|'verified'|'unavailable';
 const ACTIONS = [
   { id: 'initialize', label: 'Initialize', tagline: 'Open a Drift user subaccount' },
-  { id: 'deposit', label: 'Deposit', tagline: 'SOL collateral → Drift account' },
-  { id: 'withdraw', label: 'Withdraw', tagline: 'Drift collateral → your wallet' },
+  { id: 'deposit', label: 'Deposit', tagline: 'Wrap devnet SOL → deposit wSOL to Drift' },
+  { id: 'withdraw', label: 'Withdraw', tagline: 'Drift wSOL collateral → your wallet token account' },
   { id: 'long', label: 'Long', tagline: 'SOL-PERP buy limit IOC order' },
   { id: 'short', label: 'Short', tagline: 'SOL-PERP sell limit IOC order' },
   { id: 'cancel', label: 'Cancel', tagline: 'Cancel SOL-PERP open orders' },
@@ -105,7 +105,8 @@ export function DriftTradingLab() {
           <small>{action==='long'||action==='short'?'Max 0.1 SOL base size per order.':'Max 0.5 SOL per transaction.'}</small>
         </label>}
         {(action==='long'||action==='short')&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Oracle-referenced limit price with 1% adverse-move guard and immediate-or-cancel. An accepted order can remain unfilled.</p>}
-        {action==='withdraw'&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Reduce-only spot withdrawal: no intentional collateral borrowing. Free collateral checks are enforced by Drift.</p>}
+        {action==='deposit'&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Two separate wallet approvals: wrap test SOL to your wSOL token account, then deposit wSOL into Drift. If the second step fails, your wSOL stays in your wallet.</p>}
+        {action==='withdraw'&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Withdrawal sends <strong>wSOL</strong> to your wallet token account, not native SOL. Unwrap separately using a supported wallet. Drift enforces free collateral checks.</p>}
         <label className="trade-accept"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I understand this signs a <strong>real devnet transaction</strong> using test assets. This interacts with my own Drift account, not the SolNeutral vault. I have reviewed the network and amount.</span></label>
         <button className="trade-submit" type="button" disabled={!ready||!approved} onClick={()=>void submit()}>{busy?'AWAITING WALLET / NETWORK…':`REVIEW & SIGN ${action.toUpperCase()}`} <Icon name="arrowUp" size={17}/></button>
         {!enableExecution&&<p className="trade-warning">Trading is disabled by NEXT_PUBLIC_ENABLE_DEVNET_TRADING=false.</p>}

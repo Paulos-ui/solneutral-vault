@@ -5,6 +5,7 @@
  */
 import type { Connection } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
+import { prepareWrappedSolDeposit, ensureWrappedSolDestination } from './native-sol';
 import {
   assertDevnetGenesis, boundedLimitPrice, DEVNET_GENESIS_HASH,
   DRIFT_SOL_PERP_MARKET_INDEX, DRIFT_SOL_SPOT_MARKET_INDEX,
@@ -83,14 +84,18 @@ export async function executeDriftDevnetAction(
       [signature] = await client.initializeUserAccount();
       description = 'Drift devnet user-account initialization';
     } else if (action === 'deposit') {
-      const lamports = await connection.getBalance(wallet.publicKey, 'confirmed');
-      if (lamports - Number(units!) < 20_000_000) throw new Error('Insufficient devnet SOL after reserving 0.02 SOL for network fees/rent.');
-      signature = await client.deposit(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, wallet.publicKey, 0);
-      description = 'Deposited wrapped SOL collateral to your personal Drift devnet account';
+      const { tokenAccount } = await prepareWrappedSolDeposit(connection, wallet, units!);
+      try {
+        signature = await client.deposit(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, tokenAccount, 0);
+      } catch (error) {
+        throw new Error(`Wrapped SOL was prepared in your wallet, but the separate Drift deposit did not finish. Your wSOL remains in your associated token account. ${error instanceof Error ? error.message : 'Check the devnet explorer.'}`);
+      }
+      description = 'Deposited wSOL collateral into your personal Drift devnet account';
     } else if (action === 'withdraw') {
       // reduceOnly=true: never create a spot borrow to fund a withdrawal.
-      signature = await client.withdraw(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, wallet.publicKey, true, 0);
-      description = 'Withdrew SOL collateral from your personal Drift devnet account';
+      const { tokenAccount } = await ensureWrappedSolDestination(connection, wallet);
+      signature = await client.withdraw(new sdk.BN(units!.toString()), DRIFT_SOL_SPOT_MARKET_INDEX, tokenAccount, true, 0);
+      description = 'Withdrew wSOL collateral to your wallet token account (unwrap separately to receive native SOL)';
     } else if (action === 'cancel') {
       signature = await client.cancelOrders(sdk.MarketType.PERP, DRIFT_SOL_PERP_MARKET_INDEX);
       description = 'Requested cancellation of outstanding SOL-PERP devnet orders';
