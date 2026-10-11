@@ -58,6 +58,14 @@ In the app, clicking the SolNeutral brand returns to **Dashboard**. On the publi
 - **Anchor/Rust research vault** in `vault/solneutral_v3`, intentionally disconnected from live trading. Not compiled, deployed or security audited in this release.
 - **Historical V1 materials** in `legacy/`, retained for provenance and discussion of improvements.
 
+## Backend and Drift onboarding on Vercel (V6.1)
+
+**There is no separate Railway backend to deploy.** The active `/api/*` endpoints are Next.js Route Handlers deployed as part of the `frontend` project on Vercel. The old Flask backend is in `legacy/` and is not used by the current application.
+
+Keep your existing Vercel project, set **Root Directory** to `frontend`, configure `NEXT_PUBLIC_DEVNET_RPC_URL`, `NEXT_PUBLIC_ENABLE_DEVNET_TRADING`, and optional private `SOLANA_RPC_URL` and AI keys in Settings > Environment Variables, then redeploy. Visit `/api/status` and Settings > Backend & data services to verify. **Never commit private API tokens or seed phrases.**
+
+In **Trade Lab** a visible account-setup banner leads to **Account > Initialize Drift Account** when a connected devnet wallet has no verified Drift User account. Signing an initialization transaction costs test SOL and does not give custody to SolNeutral. Detailed instructions: [`docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md`](docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md).
+
 ## Run locally
 
 Requires a current Node.js LTS release and npm.

@@ -1,12 +1,10 @@
-# SolNeutral V6 — Cumulative Release Manifest
+# SolNeutral V6.1 — cumulative release
 
-- Product: SolNeutral
-- Founder: Web3 supporter · @instators
-- Codebase: Full consolidated V5 base with funding type correction and V6 UX changes
-- Intended repository: existing `solneutral-vault` checkout, no separate repo
-- Contents: Next.js frontend + API, deterministic models/tests, V3 Anchor research source, docs, and historical V1 files
-- Behavior: `unzip -o` overwrites matching paths, preserves `.git`, and does not delete unmatched legacy files
-- Main product changes: compressed home/dashboard, persistent Docs sidebar, compact Observatory and Risk Lab, tabbed devnet trade workstation, Q&A analyst, concise History/Settings, corrected brand navigation
-- External functions: Solana devnet RPC, Drift indexer and Drift devnet SDK require live integration checks
-- Product restrictions: no mainnet vault deposits, no invented financial returns, no unattended trading, no production custodian claim
-- Verification: 50 unit/source tests pass and all frontend TS/TSX files parse; Next.js build **not confirmed** locally because npm dependency installation is blocked
+- Maintains all V6 navigation, dashboard, AI, Docs, Observatory and Drift devnet features.
+- New: Next.js `/api/health` diagnostics with optional fixed-source devnet/mainnet RPC genesis-hash probes. No secrets or private RPC URLs are returned.
+- Corrected: `/api/status` reports the actual V6.1 feature state rather than outdated V3 flags.
+- New: Settings > Backend & data services checker.
+- Improved: Trade Lab prominently surfaces wallet/network/Drift User account initialization, opens the Account pane when an account is verified missing, and preserves wallet approval/testnet controls.
+- New: detailed Vercel environment mapping and setup guide.
+- No new dependencies, no Railway backend migration, no new mainnet vault functionality.
+- Validation: 53 local deterministic tests passed; TypeScript and CSS source parsing passed. Full Next.js build and live Drift wallet transaction **not run** in this environment.

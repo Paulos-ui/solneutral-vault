@@ -1,17 +1,17 @@
-# SolNeutral V6 — Install and Verify
+# SolNeutral V6.1 — Backend & Drift setup
 
-The V6 ZIP is **cumulative**. All source files are at the ZIP root. Extract directly over the existing `solneutral-vault` repository. It preserves `.git`, adds new files and overwrites matching files; it does **not** automatically remove obsolete, unmatched old files.
+Founder: **Web3 supporter** · X: **@instators**
 
-## Install (Git Bash, after saving ZIP to Desktop)
+## Update the EXISTING repository (Git Bash)
+
+Download `SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip` to your Windows Desktop.
 
 ```bash
 cd "/mnt/c/Users/MY PC/Desktop/solneutral-vault"
-unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_COMPLETE_Product_Workspace.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_COMPLETE_Product_Workspace.zip"
+unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_1_Backend_Drift_Onboarding_COMPLETE.zip"
 ```
 
-The ZIP is only removed if extraction succeeded. No backup folders or nested project directories.
-
-## Test before committing
+## Validate and push
 
 ```bash
 cd frontend
@@ -19,15 +19,33 @@ npm install
 npm test && npm run typecheck && npm run build
 ```
 
-If **all three pass**, push:
+Only if all succeed:
 
 ```bash
 cd ..
 git add -A
-git commit -m "feat: SolNeutral V6 compact trading workspace"
+git commit -m "feat: backend diagnostics and guided Drift devnet setup"
 git push origin HEAD
 ```
 
-Make sure Vercel's **Root Directory** is `frontend` and the latest deployment is **Ready**. Test `/dashboard`, `/observatory`, `/trade`, `/analyst`, `/risk-lab`, `/history`, `/docs` and `/settings`. Connect a dedicated devnet wallet. Never use real assets with unverified experimental code.
+## Configure Vercel without deleting the project
 
-**Test status of this release:** 50 deterministic/static regression tests passed; TypeScript/TSX syntax and CSS parser checks passed. Full `npm run typecheck`, Next.js production build and live wallet transactions were **not** run in the artifact environment because npm package installation was unavailable. Your local validation is necessary.
+In **Vercel > Existing SolNeutral Project > Settings > Build and Deployment**, set **Root Directory = `frontend`**. In **Settings > Environment Variables**, configure:
+
+- `NEXT_PUBLIC_DEVNET_RPC_URL = https://api.devnet.solana.com`
+- `NEXT_PUBLIC_ENABLE_DEVNET_TRADING = true`
+- Optional `SOLANA_RPC_URL`: private **mainnet** RPC, used for read-only data only.
+- Optional AI: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `AI_DEMO_ACCESS_TOKEN` (private server-side secrets).
+
+Select Production and redeploy. The existing backend runs automatically as Next.js API routes on Vercel; the archived Flask/Railway backend is not involved.
+
+Test:
+
+- `https://solneutral-vault.vercel.app/api/status`
+- `https://solneutral-vault.vercel.app/api/health`
+- `https://solneutral-vault.vercel.app/settings` → **Test backend & RPC**
+- `https://solneutral-vault.vercel.app/trade` → **Initialize Drift Account** when a connected devnet wallet has no verified Drift account.
+
+See `docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md` for a more detailed walkthrough. Never commit `.env.local`, private tokens, private keypairs, or wallet seed phrases.
+
+**Devnet only. No real-money pooled vault deposits.**
