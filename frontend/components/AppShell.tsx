@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/Icons';
 import { SiteFooter } from '@/components/SiteFooter';
 
-const appPaths = ['/dashboard','/terminal','/observatory','/trade','/analyst','/history','/risk-lab','/risk-engine','/wallet-lens','/drift-lens','/settings'];
+const appPaths = ['/dashboard','/terminal','/observatory','/trade','/analyst','/history','/risk-lab','/risk-engine','/wallet-lens','/drift-lens','/settings','/docs'];
 const destinations = [
   { href:'/dashboard', label:'Dashboard', icon:'home' },
   { href:'/observatory', label:'Observatory', icon:'pulse' },

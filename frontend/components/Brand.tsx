@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function BrandMark({ size = 38 }: { size?: number }) {
   return (
@@ -12,8 +14,10 @@ export function BrandMark({ size = 38 }: { size?: number }) {
 }
 
 export function Brand({ footer = false }: { footer?: boolean }) {
+  const pathname = usePathname();
+  const inApp = ['/dashboard','/terminal','/observatory','/trade','/analyst','/history','/risk-lab','/risk-engine','/wallet-lens','/drift-lens','/settings','/docs'].some(path=>pathname===path || pathname.startsWith(path+'/'));
   return (
-    <Link href="/" className={`brand ${footer ? "brand-footer" : ""}`} aria-label="SolNeutral home">
+    <Link href={footer ? '/' : inApp ? '/dashboard' : '/'} className={`brand ${footer ? "brand-footer" : ""}`} aria-label={inApp && !footer ? "SolNeutral dashboard" : "SolNeutral home"}>
       <BrandMark size={40} />
       <span className="brand-word">SOL<span>NEUTRAL</span></span>
     </Link>

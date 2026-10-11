@@ -1,13 +1,17 @@
-# SolNeutral V5 — Install into your existing repository
+# SolNeutral V6 — Install and Verify
 
-Save `SolNeutral_V5_Connected_Dashboard_COMPLETE.zip` to your Windows Desktop. Use Git Bash:
+The V6 ZIP is **cumulative**. All source files are at the ZIP root. Extract directly over the existing `solneutral-vault` repository. It preserves `.git`, adds new files and overwrites matching files; it does **not** automatically remove obsolete, unmatched old files.
+
+## Install (Git Bash, after saving ZIP to Desktop)
 
 ```bash
 cd "/mnt/c/Users/MY PC/Desktop/solneutral-vault"
-unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V5_Connected_Dashboard_COMPLETE.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V5_Connected_Dashboard_COMPLETE.zip"
+unzip -o "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_COMPLETE_Product_Workspace.zip" -d . && rm -f "/mnt/c/Users/MY PC/Desktop/SolNeutral_V6_COMPLETE_Product_Workspace.zip"
 ```
 
-Test **before** pushing:
+The ZIP is only removed if extraction succeeded. No backup folders or nested project directories.
+
+## Test before committing
 
 ```bash
 cd frontend
@@ -15,15 +19,15 @@ npm install
 npm test && npm run typecheck && npm run build
 ```
 
-Push **only if** all commands above succeed:
+If **all three pass**, push:
 
 ```bash
 cd ..
 git add -A
-git commit -m "feat: launch SolNeutral wallet-first dashboard"
+git commit -m "feat: SolNeutral V6 compact trading workspace"
 git push origin HEAD
 ```
 
-Open the home page, connect Phantom/Solflare from the header, and confirm you reach `/dashboard`. Or click Dashboard to view the connection gate before connecting. Test `/trade`, `/history`, `/analyst`, `/observatory`, and `/settings`.
+Make sure Vercel's **Root Directory** is `frontend` and the latest deployment is **Ready**. Test `/dashboard`, `/observatory`, `/trade`, `/analyst`, `/risk-lab`, `/history`, `/docs` and `/settings`. Connect a dedicated devnet wallet. Never use real assets with unverified experimental code.
 
-The Dashboard reads *public devnet* wallet SOL, signature history and external indexed Drift funding if available. Modeled stress values are not a real wallet portfolio. Sign transactions with a throwaway devnet-only wallet. Mainnet pooled SolNeutral deposits are not enabled. No API key is required for the default deterministic Analyst mode; private AI credentials remain server-side in Vercel.
+**Test status of this release:** 50 deterministic/static regression tests passed; TypeScript/TSX syntax and CSS parser checks passed. Full `npm run typecheck`, Next.js production build and live wallet transactions were **not** run in the artifact environment because npm package installation was unavailable. Your local validation is necessary.

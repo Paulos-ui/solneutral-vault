@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAnchorWallet, useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { ConnectWallet } from './ConnectWallet';
 import { Icon } from './Icons';
 import { assertDevnetGenesis, explorerTransactionUrl, validateDevnetAmount } from '@/lib/devnet-execution';
 import { executeDriftDevnetAction, inspectDriftDevnetAccount, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
 
 type ConnectionState = 'idle'|'checking'|'verified'|'unavailable';
+type DeskTab = 'trade'|'collateral'|'account'|'orders';
 const ACTIONS = [
   { id: 'initialize', label: 'Initialize', tagline: 'Open a Drift user subaccount' },
   { id: 'deposit', label: 'Deposit', tagline: 'Wrap devnet SOL → deposit wSOL to Drift' },
@@ -33,18 +33,18 @@ export function DriftTradingLab() {
   const [genesis,setGenesis]=useState('');
   const [balance,setBalance]=useState<number|null>(null);
   const [driftAccount,setDriftAccount]=useState<{address:string;exists:boolean}|null>(null);
-  const [action,setAction]=useState<ExecutionAction>('initialize');
+  const [action,setAction]=useState<ExecutionAction>('long');
+  const [tab,setTab]=useState<DeskTab>('trade');
   const [amount,setAmount]=useState('0.05');
   const [approved,setApproved]=useState(false);
   const [busy,setBusy]=useState(false);
   const [pendingStep,setPendingStep]=useState('');
   const [error,setError]=useState('');
   const [result,setResult]=useState<ExecutionResult|null>(null);
-  const reduceMotion=useReducedMotion();
   const enableExecution = process.env.NEXT_PUBLIC_ENABLE_DEVNET_TRADING !== 'false';
   const current = ACTIONS.find(a=>a.id===action)!;
   const noAmount=action==='initialize'||action==='cancel';
-  const ready=Boolean(connected&&publicKey&&signer&&network==='verified'&&!busy&&enableExecution);
+  const ready=Boolean(connected&&publicKey&&signer&&network==='verified'&&!busy&&enableExecution&&driftAccount&&(action==='initialize'?!driftAccount.exists:driftAccount.exists));
 
   const refresh=useCallback(async()=>{
     if(!connected||!publicKey||!signer){setNetwork('idle');setBalance(null);setDriftAccount(null);return;}
@@ -65,7 +65,7 @@ export function DriftTradingLab() {
   },[connected,publicKey,signer,connection]);
   useEffect(()=>{void refresh();},[refresh]);
 
-  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setAmount(id==='long'||id==='short'?'0.01':'0.05');}
+  function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':'0.05');}
   async function submit(){
     if(!ready||!signer) return;
     if(!approved){setError('Review the action and tick the acknowledgement before signing.');return;}
@@ -80,51 +80,41 @@ export function DriftTradingLab() {
     }catch(err){setError(readableError(err));setPendingStep('Action was not verified as successful.');}
     finally{setBusy(false);}
   }
-  return <section className="trade-lab-grid" aria-label="Drift devnet execution lab">
-    <div className="trade-lab-main">
-      <div className="trade-statusline"><span className="trade-live-dot"/> DEVNET / SIGNED EXECUTION <span>USER-CONTROLLED</span></div>
-      <div className="trade-headline"><span className="micro-label">TRANSACTION ENGINE / 001</span><h2>YOUR KEYS.<br/><em>YOUR POSITIONS.</em></h2><p>Initialize your own Drift subaccount, deposit or withdraw test collateral, and place bounded SOL-PERP orders. Every action requires your wallet signature.</p></div>
-      <div className="trade-stepper" aria-label="Transaction workflow">
-        <span className={connected?'complete':''}>01 CONNECT</span><span className={network==='verified'?'complete':''}>02 VERIFY NETWORK</span><span className={driftAccount?.exists?'complete':''}>03 DRIFT ACCOUNT</span><span>04 SIGN & VERIFY</span>
-      </div>
-      <div className="trade-wallet-card">
-        <div className="trade-card-top"><span>CONNECTED IDENTITY</span><span>{network==='verified'?'● DEVNET VERIFIED':network==='checking'?'CHECKING RPC':network==='unavailable'?'NETWORK REJECTED':'DISCONNECTED'}</span></div>
-        <div className="trade-wallet-row"><div><strong>{publicKey?compact(publicKey.toBase58()):'— / CONNECT A WALLET'}</strong><p>{publicKey?'Wallet owns all signing authority. No key enters SolNeutral servers.':'Use Phantom or Solflare to continue.'}</p></div><ConnectWallet/></div>
-        <div className="trade-wallet-metrics"><div><small>NATIVE DEVNET SOL</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})}</strong></div><div><small>DRIFT USER ACCOUNT</small><strong>{driftAccount?(driftAccount.exists?'EXISTS':'NOT INITIALIZED'):'NOT VERIFIED'}</strong></div></div>
-        <button className="trade-refresh" type="button" onClick={()=>void refresh()} disabled={!connected||busy}>REFRESH NETWORK & ACCOUNT <Icon name="arrowUp" size={13}/></button>
-        {genesis&&<small className="trade-genesis">Cluster fingerprint: {compact(genesis)}</small>}
-      </div>
-      <div className="trade-actions-box">
-        <div className="trade-card-top"><span>ACTION SELECTOR / SOL-PERP</span><span>DRIFT PROTOCOL · DEVNET</span></div>
-        <div className="trade-action-tabs" role="group" aria-label="Select a devnet action">
-          {ACTIONS.map(a=><button key={a.id} type="button" onClick={()=>choose(a.id)} className={action===a.id?'selected':''} aria-pressed={action===a.id}>{a.label}</button>)}
-        </div>
-        <div className="trade-action-detail"><div><span className="micro-label">CURRENT INSTRUCTION</span><strong>{current.tagline}</strong></div><span>{noAmount?'NO AMOUNT':'SOL'}</span></div>
-        {!noAmount&&<label className="trade-amount-field">AMOUNT / SOL
-          <input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} value={amount} onChange={e=>{setAmount(e.target.value);setApproved(false);}} placeholder="0.05" />
-          <small>{action==='long'||action==='short'?'Max 0.1 SOL base size per order.':'Max 0.5 SOL per transaction.'}</small>
-        </label>}
-        {(action==='long'||action==='short')&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Oracle-referenced limit price with 1% adverse-move guard and immediate-or-cancel. An accepted order can remain unfilled.</p>}
-        {action==='deposit'&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Two separate wallet approvals: wrap test SOL to your wSOL token account, then deposit wSOL into Drift. If the second step fails, your wSOL stays in your wallet.</p>}
-        {action==='withdraw'&&<p className="trade-market-limit"><Icon name="shield" size={16}/> Withdrawal sends <strong>wSOL</strong> to your wallet token account, not native SOL. Unwrap separately using a supported wallet. Drift enforces free collateral checks.</p>}
-        <label className="trade-accept"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I understand this signs a <strong>real devnet transaction</strong> using test assets. This interacts with my own Drift account, not the SolNeutral vault. I have reviewed the network and amount.</span></label>
-        <button className="trade-submit" type="button" disabled={!ready||!approved} onClick={()=>void submit()}>{busy?'AWAITING WALLET / NETWORK…':`REVIEW & SIGN ${action.toUpperCase()}`} <Icon name="arrowUp" size={17}/></button>
-        {!enableExecution&&<p className="trade-warning">Trading is disabled by NEXT_PUBLIC_ENABLE_DEVNET_TRADING=false.</p>}
-        {network==='unavailable'&&<p className="trade-warning">RPC network failed the devnet identity check. Transaction controls are locked.</p>}
-        {error&&<p className="trade-warning" role="alert">{error}</p>}
-        {pendingStep&&<p className="trade-progress" role="status">{pendingStep}</p>}
-        {result&&<div className="trade-receipt"><div><span className="micro-label">TRANSACTION RECEIPT</span><strong>{result.confirmed?'CONFIRMED / DEVNET':'UNVERIFIED CONFIRMATION'}</strong></div><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} target="_blank" rel="noopener noreferrer">VERIFY ON SOLANA EXPLORER ↗</a><code>{result.signature}</code></div>}
-      </div>
+  const tabs: {id:DeskTab;label:string;action:ExecutionAction}[]=[
+    {id:'trade',label:'Trade',action:'long'},
+    {id:'collateral',label:'Collateral',action:'deposit'},
+    {id:'account',label:'Account',action:'initialize'},
+    {id:'orders',label:'Orders',action:'cancel'},
+  ];
+  function selectTab(next:DeskTab){setTab(next);choose(tabs.find(t=>t.id===next)!.action);}
+  return <div className="sn-v6-trade" aria-label="Drift devnet execution workspace">
+    <div className="sn-v6-trade-bar"><div className="sn-v6-market-name"><span className="sn-v6-market-icon">◎</span><div><strong>SOL-PERP</strong><span>Drift · Solana Devnet</span></div></div><div className="sn-v6-market-signals"><span className={network==='verified'?'online':''}><i/>{network==='verified'?'Verified devnet':network==='checking'?'Checking network':network==='unavailable'?'RPC not verified':'Connect wallet'}</span><span>Market orders use bounded IOC limits</span></div><button type="button" className="sn-v6-refresh" disabled={!connected||busy} onClick={()=>void refresh()}>↻ Refresh</button></div>
+    <div className="sn-v6-trade-tabs" role="tablist" aria-label="Trading tools">{tabs.map(item=><button type="button" role="tab" aria-selected={tab===item.id} key={item.id} className={tab===item.id?'active':''} onClick={()=>selectTab(item.id)}>{item.label}</button>)}</div>
+    <div className="sn-v6-trade-grid">
+      <section className="sn-v6-ticket" aria-label="Transaction form">
+       <div className="sn-v6-ticket-header"><div><span>YOUR ORDER TICKET</span><h2>{tab==='trade'?'Place an order':tab==='collateral'?'Manage collateral':tab==='account'?'Drift account':'Manage orders'}</h2></div><span className="sn-v6-test-pill">TEST ASSETS ONLY</span></div>
+       {tab==='trade'&&<div className="sn-v6-direction" role="group" aria-label="Order side"><button type="button" onClick={()=>choose('long')} className={action==='long'?'buy active':'buy'} aria-pressed={action==='long'}>↗ Long</button><button type="button" onClick={()=>choose('short')} className={action==='short'?'sell active':'sell'} aria-pressed={action==='short'}>↘ Short</button></div>}
+       {tab==='collateral'&&<div className="sn-v6-direction" role="group" aria-label="Collateral action"><button type="button" onClick={()=>choose('deposit')} className={action==='deposit'?'buy active':'buy'} aria-pressed={action==='deposit'}>↓ Deposit</button><button type="button" onClick={()=>choose('withdraw')} className={action==='withdraw'?'sell active':'sell'} aria-pressed={action==='withdraw'}>↑ Withdraw</button></div>}
+       {tab==='account'&&<div className="sn-v6-action-info"><strong>{driftAccount?.exists?'Drift account found':'Create a Drift account'}</strong><p>{driftAccount?.exists?'Your derived Drift User account exists on devnet.':'Initialization is required before collateral transfers or orders.'}</p></div>}
+       {tab==='orders'&&<div className="sn-v6-action-info"><strong>Cancel SOL-PERP orders</strong><p>This cancels outstanding orders in your personal Drift User account. It does not close an open position. Open-order counts are not yet independently decoded.</p></div>}
+       {!noAmount&&<label className="sn-v6-trade-amount"><span>SIZE <small>{tab==='trade'?'BASE SOL':'DEVNET SOL'}</small></span><input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} value={amount} onChange={e=>{setAmount(e.target.value);setApproved(false);}} placeholder="0.05" /><span className="sn-v6-trade-limit">{tab==='trade'?'Maximum 0.1 SOL base per order':'Maximum 0.5 SOL per transaction'}</span></label>}
+       <div className="sn-v6-ticket-facts"><div><span>Venue</span><strong>Drift · devnet</strong></div><div><span>Execution</span><strong>{tab==='trade'?'Oracle-bounded limit · IOC':tab==='collateral'?'Wallet-owned wSOL':'Wallet-signed transaction'}</strong></div><div><span>Account</span><strong>{driftAccount?.exists?'Verified existing':driftAccount===null?'Unverified':'Not initialized'}</strong></div></div>
+       {tab==='trade'&&<p className="sn-v6-exec-note">A confirmed order submission does not guarantee an order fill. The limit guard is 1% from the observed oracle price.</p>}
+       {tab==='collateral'&&<p className="sn-v6-exec-note">{action==='deposit'?'Deposit wraps SOL into wSOL in a separate signed step; your personal Drift account receives the deposit.':'Withdrawals return wSOL to your token account. Unwrapping to native SOL is separate. Drift enforces collateral limits.'}</p>}
+       <label className="sn-v6-trade-consent"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I reviewed this devnet action and understand it requires a real wallet signature using test assets.</span></label>
+       <button type="button" className="trade-submit" disabled={!ready||!approved} onClick={()=>void submit()}>{busy?'Awaiting wallet approval…':`Review & sign ${action}`} <Icon name="arrowUp" size={16}/></button>
+       {!connected&&<div className="sn-v6-trade-connect"><ConnectWallet/><small>Connect Phantom or Solflare to continue.</small></div>}
+       {!enableExecution&&<p className="trade-warning">Trading is disabled by project configuration.</p>}
+       {network==='unavailable'&&<p className="trade-warning">This RPC has not passed the devnet identity check. Transactions are locked.</p>}
+       {connected&&network==='verified'&&driftAccount&&!driftAccount.exists&&tab!=='account'&&<p className="trade-warning">Initialize your Drift account from the Account tab before proceeding.</p>}
+       {error&&<p className="trade-warning" role="alert">{error}</p>}
+       {pendingStep&&<p className="trade-progress" role="status">{pendingStep}</p>}
+       {result&&<div className="trade-receipt"><strong>{result.confirmed?'Confirmed on devnet':'Confirmation unverified'}</strong><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} rel="noopener noreferrer" target="_blank">View transaction ↗</a><code>{result.signature}</code></div>}
+      </section>
+      <aside className="sn-v6-trade-side">
+        <section className="sn-v6-side-card"><div className="sn-v6-side-head"><h3>Account overview</h3><span>{network==='verified'?'DEVNET':'NOT VERIFIED'}</span></div><div className="sn-v6-account-number"><small>NATIVE SOL · WALLET</small><strong>{balance===null?'—':balance.toLocaleString('en-US',{maximumFractionDigits:6})} <em>SOL</em></strong></div><div className="sn-v6-ticket-facts"><div><span>Wallet</span><strong>{publicKey?compact(publicKey.toBase58()):'Not connected'}</strong></div><div><span>Drift account</span><strong>{driftAccount?(driftAccount.exists?'Exists':'Not initialized'):'Not verified'}</strong></div><div><span>Trading collateral / PnL</span><strong>Not decoded</strong></div></div><div className="sn-v6-side-note">Wallet SOL balance is a verified RPC reading when devnet validation succeeds. It is not the amount deposited into Drift.</div></section>
+        <section className="sn-v6-side-card sn-v6-safety"><div className="sn-v6-side-head"><h3>Execution safety</h3><Icon name="shield" size={19}/></div><div className="sn-v6-evidence-row"><span>Network</span><strong>{network==='verified'?'VERIFIED':'CHECK REQUIRED'}</strong></div><div className="sn-v6-evidence-row"><span>Mainnet</span><strong>DISABLED</strong></div><div className="sn-v6-evidence-row"><span>Vault deposits</span><strong>NOT ENABLED</strong></div><a target="_blank" rel="noopener noreferrer" href="https://faucet.solana.com/">Get devnet test SOL ↗</a></section>
+      </aside>
     </div>
-    <aside className="trade-lab-aside">
-      <div className="trade-orbit-panel">
-        <div className="trade-card-top"><span>EXECUTION OBSERVATORY / 01</span><span>NO CUSTODY</span></div>
-        <motion.div className="trade-orbit-visual" initial={false} animate={{rotate:reduceMotion?0:network==='verified'?8:0}} transition={{type:'spring',stiffness:22,damping:16}} aria-hidden="true">
-          <svg viewBox="0 0 310 310" role="img"><circle cx="155" cy="155" r="125" fill="none" stroke="#426a4b" strokeDasharray="3 9"/><circle cx="155" cy="155" r="92" fill="none" stroke="#c7ff91" strokeWidth="1.4" strokeDasharray="175 405" transform="rotate(-110 155 155)"/><circle cx="155" cy="155" r="60" fill="none" stroke="#7de6ab" strokeWidth="1" strokeDasharray="140 240" transform="rotate(40 155 155)"/><path d="M15 155h280M155 15v280" stroke="#315844"/><circle cx="155" cy="155" r="5" fill="#c7ff91"/><circle cx="155" cy="30" r="5" fill="#c7ff91"/></svg>
-        </motion.div>
-        <div className="trade-orbit-caption"><span>CHAIN STATE</span><strong>{network==='verified'?'DEVNET':'— / —'}</strong><small>{network==='verified'?'ON-CHAIN FINGERPRINT VERIFIED':'NO EXECUTION PERMISSION'}</small></div>
-      </div>
-      <div className="trade-aside-notes"><span className="micro-label">KNOW BEFORE YOU SIGN</span><h3>REAL TRANSACTIONS.<br/><em>TEST ASSETS.</em></h3><p>This lab uses Drift's existing deployed devnet program. Devnet tokens have no monetary value. Your wallet remains the only signer.</p><p>Deposits enter <strong>your personal Drift account</strong>, not a SolNeutral-managed pool. On-chain fills, funding, margin, and liquidations are controlled by Drift.</p><p>Our custom Anchor vault remains separate and cannot receive production deposits through this interface.</p><a href="https://faucet.solana.com/" target="_blank" rel="noopener noreferrer">GET DEVNET TEST SOL ↗</a></div>
-    </aside>
-  </section>;
+   </div>;
 }
