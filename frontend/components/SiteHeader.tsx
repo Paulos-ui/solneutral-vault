@@ -18,7 +18,6 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <div className="topline"><span>SN / RESEARCH INTERFACE</span><span className="topline-mid">ENGINEERED FOR CLARITY, NOT CERTAINTY</span><span>EDITION 02 — 2026</span></div>
       <header className="site-header">
         <div className="shell header-inner">
           <Brand />

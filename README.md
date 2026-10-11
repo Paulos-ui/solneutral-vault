@@ -25,7 +25,8 @@ SolNeutral V2 is an in-development, risk-intelligent Solana DeFi research experi
 | Responsive layout, navigation, reduced-motion support | Implemented |
 | About / Field Manual / onboarding documentation | Implemented |
 | Guarded deposit entry point | Implemented — **deposits disabled** |
-| Live Solana / Drift data and transaction history | **Not integrated yet** |
+| Drift funding observations for SOL-PERP | **Read-only conditional integration** — validates external indexed records and shows unavailable state otherwise |
+| Live Solana vault data and user transaction history | **Not connected** |
 | Wallet connection, secure vault accounting, keeper | **Not implemented in V2 yet** |
 | AI analyst with sourced calculations | **Planned** |
 | Production contract audits or mainnet vault | **Not delivered** |
@@ -42,7 +43,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/about`, and `/docs`.
+Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
 
 ### Run checks
 
@@ -100,8 +101,10 @@ frontend/                      Next.js 16, React 19, TypeScript, Tailwind, Frame
     deposit/                   Guarded disabled vault status
     api/status/                Explicit preview-status endpoint
     api/risk/scenario/         Validated scenario endpoint
+    api/market/funding/        Read-only indexed Drift funding proxy
   components/                  Brand, motion, SVG instrument, chart and simulator
   lib/scenario.ts              Shared pure, bounded calculations
+  lib/funding.ts               Strict external record parsing and rate unit conversion
   tests/                       Scenario correctness and input boundary tests
 legacy/                        Archived V1 source — NOT RUN by V2
   frontend-v1/                 Original V1 React/Next frontend
@@ -124,7 +127,7 @@ If replacing an existing deployment, don't redirect real-user deposit flows to t
 ## Development roadmap
 
 **Now — V2 design foundation:** Brand system, observatory, interactions, studio, educational docs, safe preview deployment.  
-**Next — sourced intelligence:** Verified on-chain reads, Drift funding data, provenance, timestamping, caching/rate limiting, risk monitoring, data-integrity tests.  
+**Now underway — sourced intelligence:** Read-only Drift funding observations with validation, caching and stale detection; next implement verified Solana on-chain reads, position-specific calculations, expanded risk monitoring, and data-integrity monitoring.  
 **Then — protocol engineering:** Explicit strategy specification, vault share accounting, collateral controls, privileged-role analysis, simulated adversarial testing, and independent review.  
 **Finally — AI and execution:** Explainable agent with calculations/source attribution, opt-in notifications, monitored execution only after comprehensive risk work.
 
@@ -141,3 +144,7 @@ No wallet connection or real-money vault functionality exists in this preview. N
 ## License
 
 No open-source license is granted automatically by this README. Choose a license explicitly before public distribution.
+
+## Funding signal integration (read-only)
+
+The Observatory calls `GET /api/market/funding` in the Next.js application. This route requests public `SOL-PERP` indexed market funding records from the [Drift Data API](https://data.api.drift.trade/playground), validates the record timestamps and numeric fields, converts the reported precision into normalized hourly percentages, and displays the latest verified observations and their data age. If that upstream indexer is unavailable, the UI clearly shows an unavailable state and **does not substitute placeholder metrics**. This integration uses public indexed **market** data, not connected wallets, settled PnL, realized vault returns, or on-chain transaction proofs. Data availability cannot be guaranteed without testing on the production Vercel environment. The annualized figure extrapolates an hourly observation and is not an APY forecast.

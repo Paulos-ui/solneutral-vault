@@ -15,7 +15,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
   return (
     <Link href="/" className={`brand ${footer ? "brand-footer" : ""}`} aria-label="SolNeutral home">
       <BrandMark size={40} />
-      <span className="brand-word">SOL<span>NEUTRAL</span><small> / V2</small></span>
+      <span className="brand-word">SOL<span>NEUTRAL</span></span>
     </Link>
   );
 }
