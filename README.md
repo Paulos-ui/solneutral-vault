@@ -1,6 +1,10 @@
-# SolNeutral V7.4 — Verified collateral readiness
+# SolNeutral V7.5 — Colosseum upgrade
 
-**Devnet research build — not an audited deposit vault.** New options: verified matching Drift devnet USDC collateral, wSOL fallback when on-chain market supports it, full-screen SOL reference chart, and conversational Claude assistant with token-gated server-side API. Actual wallet-signed execution remains to be verified. See `V7_3_DEMO_INSTRUCTIONS.md`.
+**Current delivery:** cumulative source with SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
+
+**Network:** Drift wallet-signed execution remains on Solana devnet. No compatible testnet markets or end-to-end signed collateral changes were verified. See [`docs/V7_5_PRODUCT_UPGRADE.md`](docs/V7_5_PRODUCT_UPGRADE.md), [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md), and [`START_HERE.md`](START_HERE.md).
+
+---
 
 # SolNeutral
 
@@ -26,8 +30,8 @@ The traditional DeFi dashboard can display a tempting APR without communicating 
 2. **Connect Phantom or Solflare** using the wallet modal. The homepage opens the connected dashboard after successful connection.
 3. **Dashboard.** Inspect real devnet wallet SOL and recent signatures where verified. Explore market-wide indexed SOL-PERP funding and a *clearly marked* hypothetical shock model. A dash means missing evidence, not zero risk.
 4. **Observatory.** Manipulate the illustrative hedge balance, view funding records, retry the source and expand the technical exposure study.
-5. **Trade Lab.** Four compact panels: **Trade**, **Collateral**, **Account**, **Orders**. Operations interact only with a user-owned Drift devnet account and require network checks, explicit acknowledgement and a wallet signature. Small bounded IOC SOL-PERP orders are not guaranteed to fill.
-6. **AI Analyst.** Ask natural-language risk questions; the deterministic model works without any paid API. Private hosted-model narration is optional, gated and strictly read-only.
+5. **Trade Lab.** Four compact panels: **Trade**, **Collateral**, **Account**, **Orders**. Operations interact only with a user-owned Drift devnet account and require network checks, explicit acknowledgement and a wallet signature. Small bounded resting-limit SOL-PERP orders are not guaranteed to fill.
+6. **AI Analyst.** Ask natural-language risk questions; the deterministic model works without any paid API. SolNeutral AI uses an operator-hosted private API key with no visitor-entered access token. It remains strictly read-only.
 7. **Risk Lab.** Adjust notional, hedge ratio, price movement, funding and duration. No simulated output is claimed as verified PnL.
 8. **History and Settings.** Review recent Solana signatures and inspect network/signer settings.
 9. **Docs.** The persistent left rail remains available while reading the technical/user guide.
@@ -61,7 +65,7 @@ In the app, clicking the SolNeutral brand returns to **Dashboard**. On the publi
 - **Tailwind + custom CSS + Framer Motion** for the original interface and animated hedge visualization.
 - **Solana Wallet Adapter + @solana/web3.js** for wallet sessions and devnet RPC.
 - **Drift SDK** loaded in the signed execution path for user-owned test operations.
-- **Next.js API routes** for server-side indexed funding collection and optional authenticated language-model interpretation.
+- **Next.js API routes** for server-side indexed funding collection and privately configured language-model interpretation.
 - **Pure deterministic mathematics** for scenario and risk models. No simulated data is relabeled as actual market history.
 - **Anchor/Rust research vault** in `vault/solneutral_v3`, intentionally disconnected from live trading. Not compiled, deployed or security audited in this release.
 - **Historical V1 materials** in `legacy/`, retained for provenance and discussion of improvements.

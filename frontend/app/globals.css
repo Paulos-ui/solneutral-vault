@@ -1340,3 +1340,24 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
 .sn-v74-check-heading button:disabled{opacity:.55;cursor:not-allowed}
 .sn-v74-check-result{margin-top:13px;display:grid;gap:7px;font-size:12px;word-break:break-word;color:#cce6d4}
 .sn-v74-check-result p{margin:0}.sn-v74-check-result strong{color:#e2ffec}.sn-v74-check-result code{font-size:11px}
+
+/* V7.5: keep the established mineral-green palette, streamline the assistant and funding path. */
+.sn-ai-thread{min-height:340px;max-height:min(64vh,650px);display:flex;flex-direction:column;gap:13px}
+.sn-ai-message{max-width:91%;padding:14px 17px;border:1px solid rgba(194,225,184,.16);border-radius:17px;background:#102a1c;color:#e2eedb;white-space:pre-wrap;overflow-wrap:anywhere}
+.sn-ai-message small{display:block;margin-bottom:7px;color:#9ef5ad;font-size:10px;letter-spacing:.12em;font-weight:800}
+.sn-ai-message p{font-size:13px;line-height:1.75;white-space:pre-wrap;margin:0}
+.sn-ai-message.from-user{align-self:flex-end;background:#1e3827;border-color:rgba(193,255,145,.32)}
+.sn-ai-message.from-user small{color:#f2f7e9}
+.sn-ai-thinking{font-size:12px;color:#c7ff91;opacity:.88}
+.sn-ai-compose-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sn-ai-simplified .sn-v6-chat-compose textarea{width:100%;resize:vertical;min-height:74px}
+.sn-v75-collateral-guide{border:1px solid rgba(199,255,145,.27);border-radius:13px;padding:16px;margin-bottom:16px;background:linear-gradient(120deg,rgba(39,92,58,.30),rgba(8,32,19,.35))}
+.sn-v75-collateral-guide strong{font-size:14px;color:#e9f5e4}
+.sn-v75-collateral-guide p{font-size:12px;line-height:1.7;color:#b8ceba;margin:8px 0 14px}
+.sn-v75-guide-actions{display:flex;gap:9px;flex-wrap:wrap}
+.sn-v75-guide-actions button{background:rgba(178,244,168,.10);border:1px solid rgba(178,244,168,.38);border-radius:9px;padding:9px 13px;color:#d0ffb1;font-size:12px;font-weight:760;cursor:pointer}
+.sn-v75-guide-actions button:hover:not(:disabled){background:rgba(178,244,168,.21)}
+.sn-v75-guide-actions button:disabled{opacity:.4;cursor:not-allowed}
+.sn-v75-collateral-guide{margin-top:4px}
+.sn-kpi-grid .sn-kpi-value small{font-size:12px;margin-left:5px}
+@media(max-width:600px){.sn-ai-message{max-width:100%}.sn-ai-thread{min-height:260px}.sn-ai-compose-actions button{max-width:100%}}

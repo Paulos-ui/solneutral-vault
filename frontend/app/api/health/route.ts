@@ -34,9 +34,7 @@ export async function GET(request: NextRequest) {
   const probe = request.nextUrl.searchParams.get('probe') === '1';
   const configuredAi = Boolean(
     process.env.ANTHROPIC_API_KEY &&
-    process.env.ANTHROPIC_MODEL &&
-    process.env.AI_DEMO_ACCESS_TOKEN &&
-    process.env.AI_DEMO_ACCESS_TOKEN.length >= 20
+    process.env.ANTHROPIC_MODEL
   );
   const [devnet, mainnet] = probe ? await Promise.all([
     probeRpc(process.env.NEXT_PUBLIC_DEVNET_RPC_URL || DEVNET_FALLBACK, DEVNET_GENESIS_HASH),
@@ -45,7 +43,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     project: 'SolNeutral',
-    release: '7.0-market-intelligence-and-private-ai',
+    release: '7.5-assisted-collateral-and-solneutral-ai',
     backend: 'online',
     environment: process.env.VERCEL_ENV || 'local',
     verifiedAt: new Date().toISOString(),

@@ -8,7 +8,7 @@ import { inspectWrappedSol } from '@/lib/native-sol';
 import { Icon } from './Icons';
 import { assertDevnetGenesis, decimalToUnits, explorerTransactionUrl, validateDevnetAmount } from '@/lib/devnet-execution';
 import { reconcileUsdcMovement, type UsdcMovementProof } from '@/lib/collateral-reconciliation';
-import { executeDriftDevnetAction, inspectDriftDevnetAccount, inspectDriftDevnetUsdc, inspectDriftDevnetUsdcReadiness, type DriftUsdcReadiness, type CollateralAsset, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
+import { executeDriftDevnetAction, inspectDriftDevnetAccount, inspectDriftDevnetUsdc, inspectDriftDevnetUsdcReadiness, inspectDriftDevnetWsolReadiness, type DriftWsolReadiness, type DriftUsdcReadiness, type CollateralAsset, type ExecutionAction, type ExecutionResult } from '@/lib/drift-devnet';
 
 type ConnectionState = 'idle'|'checking'|'verified'|'unavailable';
 type DeskTab = 'trade'|'collateral'|'account'|'orders';
@@ -42,6 +42,9 @@ export function DriftTradingLab() {
   const [usdcMint,setUsdcMint]=useState('');
   const [usdcReadiness,setUsdcReadiness]=useState<DriftUsdcReadiness|null>(null);
   const [usdcChecking,setUsdcChecking]=useState(false);
+  const [wsolChecking,setWsolChecking]=useState(false);
+  const [wsolReadiness,setWsolReadiness]=useState<DriftWsolReadiness|null>(null);
+  const [wsolCheckError,setWsolCheckError]=useState('');
   const [usdcCheckError,setUsdcCheckError]=useState('');
   const [collateralAsset,setCollateralAsset]=useState<CollateralAsset>('usdc');
   const [driftAccount,setDriftAccount]=useState<{address:string;exists:boolean}|null>(null);
@@ -61,8 +64,8 @@ export function DriftTradingLab() {
   const ready=Boolean(connected&&publicKey&&signer&&network==='verified'&&!busy&&enableExecution&&(action==='unwrap'?wrappedBalance!==null&&wrappedBalance>0n:driftAccount&&(action==='initialize'?!driftAccount.exists:driftAccount.exists)));
 
   const refresh=useCallback(async()=>{
-    if(!connected||!publicKey||!signer){setNetwork('idle');setBalance(null);setDriftAccount(null);setWrappedBalance(null);setUsdcBalance(null);setUsdcReadiness(null);return;}
-    setNetwork('checking');setError('');setDriftAccount(null);setUsdcReadiness(null);
+    if(!connected||!publicKey||!signer){setNetwork('idle');setBalance(null);setDriftAccount(null);setWrappedBalance(null);setUsdcBalance(null);setUsdcReadiness(null);setWsolReadiness(null);return;}
+    setNetwork('checking');setError('');setDriftAccount(null);setUsdcReadiness(null);setWsolReadiness(null);
     try{
       const hash=await connection.getGenesisHash();
       setGenesis(hash);
@@ -82,7 +85,7 @@ export function DriftTradingLab() {
   },[connected,publicKey,signer,connection]);
   useEffect(()=>{void refresh();},[refresh]);
   // Never show a previous wallet's transaction evidence under a newly connected wallet.
-  useEffect(()=>{setResult(null);setCollateralProof(null);setCollateralBaseline(null);},[walletAddress]);
+  useEffect(()=>{setResult(null);setCollateralProof(null);setCollateralBaseline(null);setWsolReadiness(null);},[walletAddress]);
   // First visit: show the required setup action immediately if the verified
   // account is missing. Do not repeatedly redirect when the user switches tabs.
   useEffect(() => {
@@ -96,7 +99,7 @@ export function DriftTradingLab() {
 
   async function checkUsdcCollateral(){
     if (!signer || !connected || network !== 'verified') return;
-    setUsdcChecking(true); setUsdcCheckError(''); setUsdcReadiness(null);
+    setUsdcChecking(true); setUsdcCheckError(''); setUsdcReadiness(null);setWsolReadiness(null);
     try {
       const state = await inspectDriftDevnetUsdcReadiness(connection, signer);
       setUsdcReadiness(state);
@@ -108,11 +111,23 @@ export function DriftTradingLab() {
       setUsdcChecking(false);
     }
   }
+  async function checkSolCollateral(){
+    if(!signer||!connected||network!=='verified')return;
+    setWsolChecking(true);setWsolCheckError('');setWsolReadiness(null);
+    try {setWsolReadiness(await inspectDriftDevnetWsolReadiness(connection,signer));}
+    catch(err){setWsolCheckError(readableError(err));}
+    finally{setWsolChecking(false);}
+  }
+  function useWalletSol(){
+    setTab('collateral');setCollateralAsset('wsol');choose('deposit');setAmount('0.05');
+    void checkSolCollateral();
+  }
   function choose(id:ExecutionAction){setAction(id);setApproved(false);setError('');setResult(null);setCollateralProof(null);setCollateralBaseline(null);setPendingStep('');setAmount(id==='long'||id==='short'?'0.01':collateralAsset==='usdc'?'5':'0.05');}
   async function submit(){
     if(!ready||!signer) return;
     if(!approved){setError('Review the action and tick the acknowledgement before signing.');return;}
     if(!noAmount){try{if((action==='deposit'||action==='withdraw')&&collateralAsset==='usdc'){const n=Number(amount);if(!Number.isFinite(n)||n<=0||n>100||!/^(?:\d+)(?:\.\d{1,6})?$/.test(amount))throw Error('Enter 0–100 test USDC, up to six decimals.');}else validateDevnetAmount(action as 'deposit'|'withdraw'|'long'|'short',amount);}catch(err){setError(readableError(err));return;}}
+    if((action==='deposit'||action==='withdraw')&&collateralAsset==='wsol'&&!wsolReadiness){setError('Check the supported Drift SOL market before signing. No transaction was sent.');return;}
     setBusy(true);setError('');setResult(null);setCollateralProof(null);setCollateralBaseline(null);setApproved(false);
     setPendingStep('Checking devnet and preparing Drift transaction…');
     try{
@@ -183,7 +198,7 @@ export function DriftTradingLab() {
       <div className="sn-v61-setup-copy">
         <span>DRIFT ACCOUNT SETUP</span>
         <strong>{!connected ? '1 / Connect Phantom or Solflare' : network === 'checking' ? 'Checking devnet…' : network !== 'verified' ? 'Verify your devnet RPC' : driftAccount === null ? 'Checking your Drift user account…' : driftAccount.exists ? 'Drift account verified' : '2 / Initialize your Drift account'}</strong>
-        <p>{!connected ? 'Connect a test wallet to begin.' : network === 'unavailable' ? 'RPC identity must match Solana devnet before you can sign.' : driftAccount === null ? 'If this check fails, retry. No account creation is assumed.' : driftAccount.exists ? 'Account exists. You can review collateral or open a small devnet order.' : 'Your wallet is connected, but Drift needs a user account before you can deposit or trade.'}</p>
+        <p>{!connected ? 'Connect a test wallet to begin.' : network === 'unavailable' ? 'RPC identity must match Solana devnet before you can sign.' : driftAccount === null ? 'If this check fails, retry. No account creation is assumed.' : driftAccount.exists ? 'Next: deposit supported USDC or SOL collateral before placing an order. Wallet SOL is not automatically Drift margin.' : 'Initialize your Drift account before depositing or trading. Your wallet stays in control of every signature.'}</p>
       </div>
       <div className="sn-v61-setup-actions">
         {!connected ? <ConnectWallet/> : network === 'verified' && driftAccount && !driftAccount.exists ? <button type="button" className="sn-v61-setup-primary" onClick={() => selectTab('account')}>Initialize Drift Account →</button> : network === 'verified' && driftAccount?.exists ? <button type="button" className="sn-v61-setup-primary" onClick={() => selectTab('collateral')}>Manage Collateral →</button> : <button type="button" className="sn-v61-setup-primary" disabled={busy} onClick={() => void refresh()}>Retry account check ↻</button>}
@@ -194,9 +209,11 @@ export function DriftTradingLab() {
     <div className="sn-v6-trade-grid">
       <section className="sn-v6-ticket" aria-label="Transaction form">
        <div className="sn-v6-ticket-header"><div><span>YOUR ORDER TICKET</span><h2>{tab==='trade'?'Place an order':tab==='collateral'?'Manage collateral':tab==='account'?'Drift account':'Manage orders'}</h2></div><span className="sn-v6-test-pill">TEST ASSETS ONLY</span></div>
+       {tab==='trade'&&<div className="sn-v75-collateral-guide"><strong>Before trading, fund your Drift account</strong><p>Your wallet may hold SOL while your Drift free collateral is zero. Deposit USDC matching Drift's mint, or check whether this devnet deployment accepts wrapped SOL.</p><div className="sn-v75-guide-actions"><button type="button" onClick={()=>selectTab('collateral')}>Open deposits →</button><button type="button" onClick={useWalletSol} disabled={!connected||network!=='verified'||!driftAccount?.exists}>Use my devnet SOL →</button></div></div>}
        {tab==='trade'&&<div className="sn-v6-direction" role="group" aria-label="Order side"><button type="button" onClick={()=>choose('long')} className={action==='long'?'buy active':'buy'} aria-pressed={action==='long'}>↗ Long</button><button type="button" onClick={()=>choose('short')} className={action==='short'?'sell active':'sell'} aria-pressed={action==='short'}>↘ Short</button></div>}
        {tab==='collateral'&&<div className="sn-v6-direction sn-v8-collateral-modes" role="group" aria-label="Collateral action"><button type="button" onClick={()=>choose('deposit')} className={action==='deposit'?'buy active':'buy'} aria-pressed={action==='deposit'}>↓ Deposit</button><button type="button" onClick={()=>choose('withdraw')} className={action==='withdraw'?'sell active':'sell'} aria-pressed={action==='withdraw'}>↑ Withdraw</button><button type="button" onClick={()=>choose('unwrap')} className={action==='unwrap'?'active':''} aria-pressed={action==='unwrap'}>↩ Unwrap wSOL</button></div>}
        {tab==='collateral'&&action!=='unwrap'&&<div className="sn-v73-asset-picker"><span>COLLATERAL ASSET</span><div role="group" aria-label="Choose Drift devnet collateral"><button type="button" aria-pressed={collateralAsset==='usdc'} className={collateralAsset==='usdc'?'active':''} onClick={()=>{setCollateralAsset('usdc');setAmount('5');setApproved(false);setError('')}}>USDC · preferred</button><button type="button" aria-pressed={collateralAsset==='wsol'} className={collateralAsset==='wsol'?'active':''} onClick={()=>{setCollateralAsset('wsol');setAmount('0.05');setApproved(false);setError('')}}>wSOL · if supported</button></div><small>USDC wallet balance: {usdcBalance===null?'Not verified':(Number(usdcBalance)/1e6).toFixed(2)} · Drift-configured mint: {usdcMint||'Checking…'}</small></div>}
+       {tab==='collateral' && action!=='unwrap' && collateralAsset==='wsol' && <div className="sn-v74-collateral-check" role="region" aria-label="Wrapped SOL collateral readiness"><div className="sn-v74-check-heading"><div><strong>Can your SOL fund Drift?</strong><small>Read-only check of the actual wSOL spot market and your wallet balances. No SOL is wrapped by checking.</small></div><button type="button" disabled={!connected||network!=='verified'||busy||wsolChecking} onClick={()=>void checkSolCollateral()}>{wsolChecking?'Checking…':'Check SOL market ↻'}</button></div>{wsolCheckError&&<p role="alert" className="trade-warning">{wsolCheckError} Use the matching test USDC instead if SOL is not supported.</p>}{wsolReadiness&&<div className="sn-v74-check-result"><p><strong>Market verified:</strong> Spot #{wsolReadiness.marketIndex} · wSOL</p><p><strong>Wallet native SOL:</strong> {(Number(BigInt(wsolReadiness.walletSolLamports))/1e9).toFixed(4)} SOL</p><p><strong>Wallet wrapped SOL:</strong> {(Number(BigInt(wsolReadiness.walletWsolLamports))/1e9).toFixed(4)} wSOL</p><p><strong>Drift wSOL deposited:</strong> {wsolReadiness.depositedWsolLamports===null?'Initialize Drift account first':(Number(BigInt(wsolReadiness.depositedWsolLamports))/1e9).toFixed(4)+' wSOL'}</p><p>Depositing SOL first wraps only the needed amount in your wallet (one signature), then requests a separate Drift deposit signature. If the second step fails, the wSOL stays in your wallet; use Unwrap wSOL to recover it.</p></div>}</div>}
        {tab==='collateral' && action!=='unwrap' && collateralAsset==='usdc' &&
          <div className="sn-v74-collateral-check" role="region" aria-label="USDC collateral readiness">
            <div className="sn-v74-check-heading"><div><strong>Verify USDC deposit & withdrawal readiness</strong><small>Checks the actual Drift spot market, matching token mint, wallet USDC and deposited Drift balance. No signature required.</small></div><button type="button" onClick={() => void checkUsdcCollateral()} disabled={!connected || network!=='verified' || busy || usdcChecking}>{usdcChecking?'Checking…':'Check collateral ↻'}</button></div>
@@ -206,7 +223,7 @@ export function DriftTradingLab() {
              <p><strong>Mint:</strong> <code>{usdcReadiness.mint}</code></p>
              <p><strong>Wallet USDC:</strong> {(Number(BigInt(usdcReadiness.walletAmount))/10**usdcReadiness.decimals).toLocaleString('en-US',{maximumFractionDigits:6})}</p>
              <p><strong>Deposited in Drift:</strong> {usdcReadiness.driftDepositedAmount===null?'Drift account missing':(Number(BigInt(usdcReadiness.driftDepositedAmount))/10**usdcReadiness.decimals).toLocaleString('en-US',{maximumFractionDigits:6})}</p>
-             {!usdcReadiness.userAccountExists ? <p className="trade-warning">Initialize the Drift account before collateral operations.</p> : BigInt(usdcReadiness.walletAmount)===0n && action==='deposit' ? <p className="trade-warning">Your wallet has 0 of the EXACT devnet USDC mint used by this market. Acquire matching test USDC first. Ordinary devnet SOL, Circle USDC, and other faucet tokens may use different mints and cannot be substituted.</p> : <p>Collateral market verified. Signing may proceed, subject to your balance and Drift's margin rules.</p>}
+             {!usdcReadiness.userAccountExists ? <p className="trade-warning">Initialize the Drift account before collateral operations.</p> : BigInt(usdcReadiness.walletAmount)===0n && action==='deposit' ? <p className="trade-warning">Your wallet has 0 of the EXACT devnet USDC mint used by this market. Acquire matching test USDC first, or select wSOL and check if Drift supports SOL collateral on this devnet deployment. Devnet SOL is not the same as USDC; other faucet tokens may use different mints.</p> : <p>Collateral market verified. Signing may proceed, subject to your balance and Drift's margin rules.</p>}
            </div>}
            {!usdcReadiness && !usdcChecking && !usdcCheckError && <small>Run this check before attempting any transfer. The app will also check inside the signing flow.</small>}
          </div>}
@@ -222,7 +239,7 @@ export function DriftTradingLab() {
        {!enableExecution&&<p className="trade-warning">Trading is disabled by project configuration.</p>}
        {network==='unavailable'&&<p className="trade-warning">This RPC has not passed the devnet identity check. Transactions are locked.</p>}
        {connected&&network==='verified'&&driftAccount&&!driftAccount.exists&&tab!=='account'&&<p className="trade-warning">A Drift account is required. <button type="button" className="sn-v61-inline-setup" onClick={() => selectTab('account')}>Open account setup →</button></p>}
-       {error&&<p className="trade-warning" role="alert">{error}</p>}
+       {error&&<div className="trade-warning" role="alert"><p>{error}</p>{/free collateral|before placing an order/i.test(error)&&<button type="button" className="sn-v61-inline-setup" onClick={()=>selectTab('collateral')}>Deposit collateral first →</button>}</div>}
        {pendingStep&&<p className="trade-progress" role="status">{pendingStep}</p>}
        {result&&<div className="trade-receipt"><strong>{result.confirmed?'Transaction signature confirmed on devnet':'Transaction confirmation unverified'}</strong><p>{result.description}</p><a href={explorerTransactionUrl(result.signature)} rel="noopener noreferrer" target="_blank">View transaction ↗</a><code>{result.signature}</code></div>}
        {collateralProof&&<div className="trade-receipt" role="status"><strong>{collateralProof.status==='verified'?'USDC BALANCE MOVEMENT VERIFIED':'USDC BALANCE MOVEMENT NOT VERIFIED'}</strong><p>{collateralProof.detail}</p>{collateralProof.walletDeltaRaw!==null&&<p>Wallet USDC change: {Number(BigInt(collateralProof.walletDeltaRaw))/1e6} · Drift spot change: {Number(BigInt(collateralProof.driftDeltaRaw!))/1e6} USDC</p>}{collateralProof.status==='unverified'&&collateralBaseline&&<button type="button" disabled={usdcChecking||busy||network!=='verified'} onClick={()=>void recheckCollateralProof()}>{usdcChecking?'Rechecking…':'Recheck collateral proof ↻'}</button>}</div>}

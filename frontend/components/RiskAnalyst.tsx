@@ -1,64 +1,91 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChatMessage } from '@/lib/ai-chat';
 import { POSITION_RISK_DEFAULT } from '@/lib/position-risk';
 import { DEFAULT_EVIDENCE, type FundingEvidence } from '@/lib/intelligence';
 import { buildResearchBrief } from '@/lib/analyst';
-const examples=['SOL drops 30%','Funding turns negative','Is my hedge really neutral?','What about liquidation risk?'];
-const questions=['How could SOL dropping 30% affect my hedge?','What happens if funding turns negative?','Does a neutral portfolio eliminate liquidation risk?','What happens to collateral if SOL falls rapidly?'];
-export function RiskAnalyst(){
- const [question,setQuestion]=useState(questions[0]);
- const [funding,setFunding]=useState<FundingEvidence>(DEFAULT_EVIDENCE);
- const [answer,setAnswer]=useState<ReturnType<typeof buildResearchBrief>|null>(null);
- const [modelAnswer,setModelAnswer]=useState<string|null>(null);
- const [token,setToken]=useState('');
- const [busy,setBusy]=useState(false);
- const [history,setHistory]=useState<ChatMessage[]>([]);
- const [error,setError]=useState('');
- const snapshot={assumptions:POSITION_RISK_DEFAULT,funding};
- useEffect(()=>{const abort=new AbortController();fetch('/api/market/funding',{cache:'no-store',signal:abort.signal}).then(r=>r.json()).then(p=>{if(!abort.signal.aborted&&p&&(p.status==='observed'||p.status==='stale')&&typeof p.latest?.hourlyPct==='number')setFunding({status:p.status,hourlyPct:p.latest.hourlyPct,ageMinutes:p.ageMinutes??null,source:p.source??null})}).catch(()=>{});return()=>abort.abort()},[]);
- const inspect=()=>{setError('');setModelAnswer(null);try{setAnswer(buildResearchBrief(snapshot,question))}catch{setError('Please enter a question between 1 and 1200 characters.')}};
- const explain=async()=>{
-  setError(''); setModelAnswer(null);
-  if(!token.trim()){
-    setError('Enter the private AI demo access token under AI Access to ask Claude. Scenario analysis works without it.');
-    return;
-  }
-  setBusy(true);
-  try {
-    const response=await fetch('/api/ai/interpret',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-solneutral-demo-token':token},
-      body:JSON.stringify({question,snapshot,history:history.slice(-6)}),
-    });
-    const payload:unknown=await response.json();
-    if (!payload || typeof payload !== 'object' || !('answer' in payload) ||
-        typeof payload.answer !== 'string' || !response.ok) {
-      const message=payload && typeof payload==='object' && 'error' in payload &&
-        typeof payload.error==='string' ? payload.error : 'AI unavailable';
-      throw new Error(message);
-    }
-    const content=payload.answer;
-    setModelAnswer(content);
-    setAnswer(null);
-    setHistory(previous => {
-      const next: ChatMessage[]=[...previous,{role:'user',content:question},{role:'assistant',content}];
-      return next.slice(-12);
-    });
-  } catch(e) {
-    setError(e instanceof Error?e.message:'AI unavailable. Use the verified research summary.');
-  } finally { setBusy(false); }
- };
 
- return <div className="sn-v6-ai-workspace">
- <section className="sn-v6-chat-panel" aria-label="Ask SolNeutral AI">
-  <div className="sn-v6-chat-head"><div className="sn-v6-chat-symbol">✳</div><div><strong>SolNeutral Analyst</strong><p>Risk research · Not trading advice</p></div><span>READ ONLY</span></div>
-  <div className="sn-v6-chat-body" aria-live="polite">
-   {history.length>2&&history.slice(0,-2).map((entry,i)=><div className="sn-v73-chat-history" key={i}><small>{entry.role==='user'?'YOU':'CLAUDE'}</small><p>{entry.content.slice(0,950)}</p></div>)}
-   {modelAnswer||answer?<div className="sn-v6-chat-message"><span className="sn-v6-chat-bubble-label">SOLNEUTRAL · {modelAnswer?'PRIVATE MODEL':'RULE-BASED RESEARCH'}</span><div className="sn-v6-chat-answer">{(modelAnswer||answer?.answer||'').split('\n\n').map((text,i)=><p key={i}>{text}</p>)}</div>{answer?.provenance&&<details><summary>View supporting assumptions and evidence</summary>{answer.provenance.map(src=><p key={src}>↗ {src}</p>)}</details>}</div>:<div className="sn-v6-chat-empty"><span aria-hidden="true">⌁</span><h2>What would you like to understand?</h2><p>Ask anything. Claude can explain SolNeutral, analyze risk, or answer general questions. Live figures are shown only when verified.</p></div>}
-  </div>
-  <div className="sn-v6-chat-compose"><div className="sn-v6-prompt-chips">{examples.map((sample,i)=><button type="button" key={sample} onClick={()=>{setQuestion(questions[i]);setAnswer(null);setModelAnswer(null)}}>{sample}</button>)}</div><label htmlFor="research-question">Your question</label><textarea id="research-question" maxLength={1200} rows={3} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Ask SolNeutral about risk…"/><button type="button" disabled={busy} className="sn-trade-cta" onClick={()=>void explain()}>{busy?'Claude is thinking…':'Ask Claude ↗'}</button><button type="button" className="sn-v73-secondary-ai" onClick={inspect}>Explain hedge scenario without API</button>{error&&<p role="alert" className="analyst-error">{error}</p>}</div>
- </section>
- <aside className="sn-v6-ai-aside"><div className="sn-v6-side-head"><h3>Context & sources</h3><span>{funding.status.toUpperCase()}</span></div><div className="sn-v6-ticket-facts"><div><span>Hedge values</span><strong>Illustrative defaults</strong></div><div><span>Funding observation</span><strong>{funding.hourlyPct===null?'Not verified':`${funding.hourlyPct.toFixed(5)}% / hour`}</strong></div><div><span>Execution rights</span><strong>None</strong></div></div><p>The analyst does not access your private keys or execute trades. Answers do not imply verified account positions.</p><details open className="sn-v6-ai-advanced"><summary>AI Access · private demo token ↗</summary><p>The operator must configure server-side API credentials and a separate demo access token.</p><input type="password" value={token} onChange={e=>setToken(e.target.value)} autoComplete="off" placeholder="Demo access token"/><p>Use your separate AI_DEMO_ACCESS_TOKEN value here, never your Anthropic API key. This demo access is private, not public-user authentication.</p></details></aside>
- </div>;
+const prompts = [
+  'How can I deposit collateral?',
+  'What happens if SOL falls 30%?',
+  'What is a delta-neutral hedge?',
+  'Can you explain my trading risks?',
+];
+
+export function RiskAnalyst() {
+  const [question, setQuestion] = useState('');
+  const [funding, setFunding] = useState<FundingEvidence>(DEFAULT_EVIDENCE);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [localExplanation, setLocalExplanation] = useState('');
+  const bottom = useRef<HTMLDivElement | null>(null);
+  const snapshot = { assumptions: POSITION_RISK_DEFAULT, funding };
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch('/api/market/funding', { cache: 'no-store', signal: abort.signal })
+      .then(res => res.json())
+      .then(p => {
+        if (!abort.signal.aborted && (p?.status === 'observed' || p?.status === 'stale') && typeof p.latest?.hourlyPct === 'number') {
+          setFunding({status:p.status, hourlyPct:p.latest.hourlyPct, ageMinutes:p.ageMinutes ?? null, source:p.source ?? null});
+        }
+      }).catch(() => {});
+    return () => abort.abort();
+  }, []);
+  useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages, localExplanation]);
+
+  async function send(text = question) {
+    const prompt = text.trim();
+    if (!prompt || busy) return;
+    if (prompt.length > 1200) { setError('Please keep your question under 1,200 characters.'); return; }
+    const previous = messages;
+    setMessages(items => [...items, {role:'user', content:prompt}]);
+    setQuestion(''); setError(''); setLocalExplanation(''); setBusy(true);
+    try {
+      const response = await fetch('/api/ai/interpret', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({question:prompt, snapshot, history:previous.slice(-8)}),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok || !payload || typeof payload !== 'object' || !('answer' in payload) || typeof payload.answer !== 'string') {
+        const message = payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
+          ? payload.error : 'SolNeutral AI is temporarily unavailable. Please try again.';
+        throw new Error(message);
+      }
+      setMessages(items => [...items, {role:'assistant', content:payload.answer}]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'SolNeutral AI is temporarily unavailable.');
+    } finally { setBusy(false); }
+  }
+
+  function explainScenario() {
+    setError('');
+    try {
+      const result = buildResearchBrief(snapshot, question.trim() || 'How does a 30% SOL price drop affect the example hedge?');
+      setLocalExplanation(result.answer);
+    } catch { setError('Enter a question to analyze the example hedge.'); }
+  }
+
+  return <div className="sn-v6-ai-workspace sn-ai-simplified">
+    <section className="sn-v6-chat-panel" aria-label="SolNeutral AI conversation">
+      <div className="sn-v6-chat-head"><div className="sn-v6-chat-symbol">✳</div><div><strong>SolNeutral AI</strong><p>Your research companion · Ask naturally</p></div><span>READ ONLY</span></div>
+      <div className="sn-v6-chat-body sn-ai-thread" aria-live="polite">
+        {messages.length === 0 && !localExplanation && <div className="sn-v6-chat-empty"><span aria-hidden="true">✳</span><h2>How can I help?</h2><p>Ask about deposits, Drift trading, hedging, or anything else. I can explain the product, but I cannot sign transactions or see private wallet data.</p></div>}
+        {messages.map((message, index) => <div key={index} className={`sn-ai-message ${message.role === 'user' ? 'from-user' : 'from-agent'}`}><small>{message.role === 'user' ? 'YOU' : 'SOLNEUTRAL AI'}</small><p>{message.content}</p></div>)}
+        {busy && <p className="sn-ai-thinking" role="status">SolNeutral AI is responding…</p>}
+        {localExplanation && <div className="sn-ai-message from-agent"><small>OFFLINE SCENARIO · HYPOTHETICAL</small><p>{localExplanation}</p></div>}
+        <div ref={bottom} />
+      </div>
+      <div className="sn-v6-chat-compose">
+        <div className="sn-v6-prompt-chips">{prompts.map(prompt => <button key={prompt} type="button" disabled={busy} onClick={() => void send(prompt)}>{prompt}</button>)}</div>
+        <label htmlFor="research-question">Ask SolNeutral AI</label>
+        <textarea id="research-question" maxLength={1200} rows={3} value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={e => {if (e.key === 'Enter' && !e.shiftKey) {e.preventDefault();void send();}}} placeholder="Type your question…" />
+        <div className="sn-ai-compose-actions"><button type="button" disabled={busy || !question.trim()} className="sn-trade-cta" onClick={() => void send()}>{busy ? 'Thinking…' : 'Send message ↗'}</button><button type="button" className="sn-v73-secondary-ai" onClick={explainScenario}>Offline hedge explanation</button></div>
+        {error && <p role="alert" className="analyst-error">{error}</p>}
+      </div>
+    </section>
+    <aside className="sn-v6-ai-aside"><div className="sn-v6-side-head"><h3>SolNeutral AI</h3><span>RESEARCH</span></div><p>Ask your question directly. No separate AI login, personal API key, or demo access token is required.</p><div className="sn-v6-ticket-facts"><div><span>Example hedge</span><strong>Simulation only</strong></div><div><span>Funding data</span><strong>{funding.hourlyPct === null ? 'Not currently verified' : `${funding.hourlyPct.toFixed(5)}% / hour`}</strong></div><div><span>Wallet signatures</span><strong>Always yours</strong></div></div><p>Live account balances are checked separately in Trade Lab. SolNeutral AI does not execute trades, access private keys, or invent transactions. The operator manages its private AI service configuration.</p></aside>
+  </div>;
 }

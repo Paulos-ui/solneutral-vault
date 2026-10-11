@@ -1,3 +1,9 @@
+# SolNeutral V7.5 — Current product
+
+Live UI: SolNeutral AI (no visitor token), Drift wSOL market verification, on-chain account and USDC visibility in the dashboard, simplified Settings. The AI needs operator-held Vercel environment variables `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` and a WAF rate limit; no keys are placed in the client. Drift remains **devnet**, not testnet. Signed transaction proof is still pending. See root `START_HERE.md` and `docs/V7_5_PRODUCT_UPGRADE.md`.
+
+---
+
 # SolNeutral
 
 **A more transparent way to hedge on Solana.**

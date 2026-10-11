@@ -181,6 +181,28 @@ export async function inspectDriftDevnetUsdcReadiness(
   }
 }
 
+/** Read-only validation before presenting a native-SOL funding path.
+ * Only accepts a verified deployed Drift wSOL market. Never wraps on inspection.
+ */
+export type DriftWsolReadiness = { marketIndex:number; walletSolLamports:string; walletWsolLamports:string; depositedWsolLamports:string|null };
+export async function inspectDriftDevnetWsolReadiness(connection:Connection, wallet:AnchorWallet):Promise<DriftWsolReadiness> {
+  const {client,sdk,config}=await openDevnetClient(connection,wallet);
+  try {
+    const marketIndex=await verifiedWrappedSolMarket(connection,client);
+    const {inspectWrappedSol}=await import('./native-sol');
+    const [lamports,wrapped]=await Promise.all([connection.getBalance(wallet.publicKey,'confirmed'),inspectWrappedSol(connection,wallet.publicKey)]);
+    const userId=sdk.getUserAccountPublicKeySync(new (await import('@solana/web3.js')).PublicKey(config.DRIFT_PROGRAM_ID),wallet.publicKey,0);
+    const account=await connection.getAccountInfo(userId,'confirmed');
+    let depositedWsolLamports:string|null=null;
+    if(account){
+      if(!account.owner.equals(client.program.programId))throw new Error('Drift user account owner mismatch.');
+      if(!(await client.addUser(0)))throw new Error('Unable to load your Drift user account.');
+      depositedWsolLamports=client.getUser(0).getTokenAmount(marketIndex).toString();
+    }
+    return {marketIndex,walletSolLamports:String(lamports),walletWsolLamports:wrapped.amount.toString(),depositedWsolLamports};
+  } finally { await client.unsubscribe().catch(()=>undefined); }
+}
+
 /** All actions require a connected wallet, devnet RPC, small validated sizes and separate user confirmation. */
 export async function executeDriftDevnetAction(
   connection: Connection,

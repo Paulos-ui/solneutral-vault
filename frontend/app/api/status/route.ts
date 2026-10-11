@@ -8,7 +8,7 @@ export function GET() {
   const tradingEnabled = process.env.NEXT_PUBLIC_ENABLE_DEVNET_TRADING !== 'false';
   return NextResponse.json({
     project: 'SolNeutral',
-    version: '7.0.0-preview',
+    version: '7.5.0-demo',
     backend: 'nextjs-vercel-functions',
     mode: 'devnet-trading-and-research',
     walletConnectionAvailable: true,
@@ -17,7 +17,7 @@ export function GET() {
     pooledVaultDepositsEnabled: false,
     mainnetExecutionEnabled: false,
     aiDeterministicModeAvailable: true,
-    privateAiConfigured: Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_MODEL && process.env.AI_DEMO_ACCESS_TOKEN && process.env.AI_DEMO_ACCESS_TOKEN.length >= 20),
+    privateAiConfigured: Boolean(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_MODEL),
     healthEndpoint: '/api/health',
     fundingEndpoint: '/api/market/funding',
     solReferenceChartEndpoint: '/api/market/sol-chart?interval=5m',
