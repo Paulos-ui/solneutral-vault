@@ -1,13 +1,12 @@
-# SolNeutral V7.1 — Live Chart & Safer Devnet Collateral
+# SolNeutral V7.2 cumulative release
 
-- Full cumulative V2–V7.1 repository-root release (no nested wrapper directory).
-- Original premium wallet-first dashboard, Observatory, Risk Lab, AI Analyst, Docs and Trade Lab retained.
-- Trade Lab SOL/USD Coinbase spot candlestick chart (1m/5m/15m/1h/6h/1d) and `/api/market/sol-chart`; observation only, **not** a Drift-perp mark/execution feed.
-- Corrected handling of failed SOL collateral deposits: dynamically validate actual wSOL spot market by mint and Drift program owner **before** wallet wrapping; do not assume market index 1.
-- Reuse available wallet-owned wSOL; only wrap a deficit. Explicit wallet-signed **Unwrap wSOL** action closes the user's canonical wSOL ATA, converting its entire balance to SOL (plus reclaimed rent).
-- Deposits and withdrawals require Drift devnet account verification, wallet signature, and on-chain confirmation; unsupported devnet collateral fails closed.
-- Optional Claude integration remains server-side and access-token gated. No private credentials embedded in ZIP.
-- Experimental Anchor vault in `vault/` remains uncompiled, unaudited and disconnected from mainnet deposits.
-- **Checks:** 63 Node deterministic tests pass; ZIP CRC / root layout checked. Full `npm run typecheck` / Next.js production build and live signed devnet transactions **not verified** in this environment.
+- Built upon complete SolNeutral V7.1 source, overlaid with V7.1.1 build fix.
+- Corrects the observed `InvalidOrderIOC (6050 / 0x17a2)` order construction using a bounded, potentially resting limit order.
+- Adds a positive free-collateral check before a new order, without fabricating collateral balances.
+- Updates the trading consent and order receipt to describe resting-order behavior and cancellation.
+- Adds historical chart controls for browsing verified SOL/USD candles. Preserves automatic refresh and timeframe controls.
+- Makes the dashboard's unverified Drift account card compact, while retaining funding refresh.
+- Adds validated funding API route fallback with no invented rates.
+- Updates regression tests, deployment docs, old program-ID discrepancy notes, and safe devnet/testnet guidance.
 
-See [`docs/V7_1_COLLATERAL_AND_CHART.md`](docs/V7_1_COLLATERAL_AND_CHART.md) for recovery and caveats.
+**Cannot yet claim:** fully tested mainnet vault, verified deposit/withdrawal, actual fill, liquidation price, portfolio PnL or live testnet Drift deployment. This release is a **research/devnet execution upgrade**, not an audit or a production trading certification.

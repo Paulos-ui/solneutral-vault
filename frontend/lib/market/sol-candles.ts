@@ -21,3 +21,15 @@ export function parseSolCandles(payload:unknown,now=Date.now()):SolCandle[]{
 export function solCandleFresh(last:SolCandle|undefined,granularity:SolGranularity,now=Date.now()):boolean{
  return Boolean(last&&last.time*1000<=now+120000&&now-last.time*1000<=Math.max(180000,granularity*1000+180000));
 }
+
+/** Pure, bounded historical-window navigation. Never invent candles. */
+export function solVisibleWindow(candles: readonly SolCandle[], offsetFromLatest: number, visibleBars = 70): SolCandle[] {
+  const size = Number.isFinite(visibleBars) ? Math.max(10, Math.min(150, Math.trunc(visibleBars))) : 70;
+  const maxOffset = Math.max(0, candles.length - size);
+  const offset = Number.isFinite(offsetFromLatest) ? Math.min(maxOffset, Math.max(0, Math.trunc(offsetFromLatest))) : 0;
+  return candles.slice(Math.max(0, candles.length - size - offset), candles.length - offset);
+}
+export function shiftSolWindow(candleCount: number, currentOffset: number, delta: number, visibleBars = 70): number {
+  const max = Math.max(0, candleCount - visibleBars);
+  return Math.min(max, Math.max(0, currentOffset + delta));
+}

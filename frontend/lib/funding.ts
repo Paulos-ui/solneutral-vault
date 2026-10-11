@@ -53,8 +53,12 @@ export function parseDriftFundingRow(row: unknown): FundingObservation | null {
 }
 
 export function parseDriftFundingResponse(data: unknown): FundingObservation[] {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return [];
-  const records = (data as Record<string, unknown>).fundingRates;
+  // Drift serves more than one public indexer URL shape; only validate rows
+  // regardless of envelope. Do not infer any nonexistent funding observation.
+  if (!data || typeof data !== 'object') return [];
+  const obj = data as Record<string, unknown>;
+  const nested = obj.data && typeof obj.data === 'object' ? obj.data as Record<string,unknown> : null;
+  const records = Array.isArray(data) ? data : (obj.fundingRates ?? nested?.fundingRates ?? obj.records);
   if (!Array.isArray(records)) return [];
   const observations = records.map(parseDriftFundingRow).filter((r): r is FundingObservation => r !== null);
   observations.sort((a, b) => b.time.localeCompare(a.time));

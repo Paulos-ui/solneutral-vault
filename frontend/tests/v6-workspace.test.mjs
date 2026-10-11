@@ -28,6 +28,6 @@ test('Analyst actions remain read-only and optional model has private gate',()=>
 test('Risk and market states do not misrepresent model as live portfolio',()=>{
  assert.match(read('app/observatory/page.tsx'),/ILLUSTRATIVE \/ NOT YOUR POSITION/);
  assert.match(read('app/risk-lab/page.tsx'),/HYPOTHETICAL \/ NOT A FORECAST/);
- assert.match(read('components/SolNeutralDashboard.tsx'),/Refresh source/);
- assert.match(read('components/SolNeutralDashboard.tsx'),/Not verified|not yet decoded|Inspect Drift/);
+ assert.match(read('components/SolNeutralDashboard.tsx'),/Check funding/);
+ assert.match(read('components/SolNeutralDashboard.tsx'),/Not verified|not yet decoded|Not synced/);
 });

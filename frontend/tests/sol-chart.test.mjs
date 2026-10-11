@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseSolCandles,validInterval,solCandleFresh} from '../lib/market/sol-candles.ts';
+import {parseSolCandles,validInterval,solCandleFresh,solVisibleWindow,shiftSolWindow} from '../lib/market/sol-candles.ts';
 
 test('Coinbase market-chart intervals are allowlisted',()=>{
  assert.equal(validInterval('5m'),true);
@@ -20,4 +20,14 @@ test('stale candles are never labeled current',()=>{
 test('empty and malformed API responses cannot masquerade as candles',()=>{
  assert.deepEqual(parseSolCandles({oops:1}),[]);
  assert.deepEqual(parseSolCandles([[1740000000,200,190,195,198,1]]),[]);
+});
+
+test('chart history navigation is bounded and returns exact observed candles',()=>{
+ const series=Array.from({length:100},(_,i)=>({time:1740000000+i*60,low:100,high:110,open:101,close:105,volume:1}));
+ assert.equal(solVisibleWindow(series,0,20)[0].time,series[80].time);
+ assert.equal(solVisibleWindow(series,20,20)[0].time,series[60].time);
+ assert.equal(solVisibleWindow(series,999,20)[0].time,series[0].time);
+ assert.equal(shiftSolWindow(series.length,0,20,20),20);
+ assert.equal(shiftSolWindow(series.length,75,20,20),80);
+ assert.equal(shiftSolWindow(series.length,20,-30,20),0);
 });

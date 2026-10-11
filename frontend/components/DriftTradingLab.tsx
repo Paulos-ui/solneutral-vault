@@ -16,8 +16,8 @@ const ACTIONS = [
   { id: 'deposit', label: 'Deposit', tagline: 'Wrap devnet SOL → deposit wSOL to Drift' },
   { id: 'withdraw', label: 'Withdraw', tagline: 'Drift wSOL collateral → your wallet token account' },
   { id: 'unwrap', label: 'Unwrap wSOL', tagline: 'Return all wallet-owned wSOL to native SOL' },
-  { id: 'long', label: 'Long', tagline: 'SOL-PERP buy limit IOC order' },
-  { id: 'short', label: 'Short', tagline: 'SOL-PERP sell limit IOC order' },
+  { id: 'long', label: 'Long', tagline: 'SOL-PERP bounded resting limit order' },
+  { id: 'short', label: 'Short', tagline: 'SOL-PERP bounded resting limit order' },
   { id: 'cancel', label: 'Cancel', tagline: 'Cancel SOL-PERP open orders' },
 ] as const;
 
@@ -104,7 +104,7 @@ export function DriftTradingLab() {
   ];
   function selectTab(next:DeskTab){setTab(next);choose(tabs.find(t=>t.id===next)!.action);}
   return <div className="sn-v6-trade" aria-label="Drift devnet execution workspace">
-    <div className="sn-v6-trade-bar"><div className="sn-v6-market-name"><span className="sn-v6-market-icon">◎</span><div><strong>SOL-PERP</strong><span>Drift · Solana Devnet</span></div></div><div className="sn-v6-market-signals"><span className={network==='verified'?'online':''}><i/>{network==='verified'?'Verified devnet':network==='checking'?'Checking network':network==='unavailable'?'RPC not verified':'Connect wallet'}</span><span>Market orders use bounded IOC limits</span></div><button type="button" className="sn-v6-refresh" disabled={!connected||busy} onClick={()=>void refresh()}>↻ Refresh</button></div>
+    <div className="sn-v6-trade-bar"><div className="sn-v6-market-name"><span className="sn-v6-market-icon">◎</span><div><strong>SOL-PERP</strong><span>Drift · Solana Devnet</span></div></div><div className="sn-v6-market-signals"><span className={network==='verified'?'online':''}><i/>{network==='verified'?'Verified devnet':network==='checking'?'Checking network':network==='unavailable'?'RPC not verified':'Connect wallet'}</span><span>1% oracle-bound limit orders may remain open</span></div><button type="button" className="sn-v6-refresh" disabled={!connected||busy} onClick={()=>void refresh()}>↻ Refresh</button></div>
     <div className="sn-v61-setup-banner" role="status">
       <div className="sn-v61-setup-copy">
         <span>DRIFT ACCOUNT SETUP</span>
@@ -125,10 +125,10 @@ export function DriftTradingLab() {
        {tab==='account'&&<div className="sn-v6-action-info"><strong>{driftAccount?.exists?'Drift account found':'Initialize your Drift user account'}</strong><p>{driftAccount?.exists?'Your derived Drift User account exists on devnet.':'Read the acknowledgement below and click Initialize Drift Account to open a Phantom/Solflare signing request. Test SOL is required for account creation fees.'}</p></div>}
        {tab==='orders'&&<div className="sn-v6-action-info"><strong>Cancel SOL-PERP orders</strong><p>This cancels outstanding orders in your personal Drift User account. It does not close an open position. Open-order counts are not yet independently decoded.</p></div>}
        {!noAmount&&<label className="sn-v6-trade-amount"><span>SIZE <small>{tab==='trade'?'BASE SOL':'DEVNET SOL'}</small></span><input type="text" inputMode="decimal" autoComplete="off" spellCheck={false} value={amount} onChange={e=>{setAmount(e.target.value);setApproved(false);}} placeholder="0.05" /><span className="sn-v6-trade-limit">{tab==='trade'?'Maximum 0.1 SOL base per order':'Maximum 0.5 SOL per transaction'}</span></label>}
-       <div className="sn-v6-ticket-facts"><div><span>Venue</span><strong>Drift · devnet</strong></div><div><span>Execution</span><strong>{tab==='trade'?'Oracle-bounded limit · IOC':tab==='collateral'?(action==='unwrap'?'Close wallet wSOL account':'Verified market · wallet-owned wSOL'):'Wallet-signed transaction'}</strong></div><div><span>Account</span><strong>{driftAccount?.exists?'Verified existing':driftAccount===null?'Unverified':'Not initialized'}</strong></div></div>
-       {tab==='trade'&&<p className="sn-v6-exec-note">A confirmed order submission does not guarantee an order fill. The limit guard is 1% from the observed oracle price.</p>}
+       <div className="sn-v6-ticket-facts"><div><span>Venue</span><strong>Drift · devnet</strong></div><div><span>Execution</span><strong>{tab==='trade'?'Oracle-bounded resting limit':tab==='collateral'?(action==='unwrap'?'Close wallet wSOL account':'Verified market · wallet-owned wSOL'):'Wallet-signed transaction'}</strong></div><div><span>Account</span><strong>{driftAccount?.exists?'Verified existing':driftAccount===null?'Unverified':'Not initialized'}</strong></div></div>
+       {tab==='trade'&&<p className="sn-v6-exec-note">This is a resting LIMIT order with a 1% oracle price guard, not an instant trade. If it does not fill, it may remain open until cancelled in Orders. A confirmed signature never proves a fill.</p>}
        {tab==='collateral'&&<div className="sn-v8-wsol-context"><div><span>WALLET wSOL · VERIFIED DEVNET BALANCE</span><strong>{wrappedBalance===null?'Unavailable':(Number(wrappedBalance)/1e9).toLocaleString('en-US',{maximumFractionDigits:9})+' wSOL'}</strong></div><p>{action==='deposit'?'Before any wrapping, SolNeutral checks the actual Drift wSOL spot market. Existing wallet wSOL is reused so you are not asked to wrap the same amount twice.':action==='withdraw'?'Drift withdrawals return wSOL to your wallet; account deposits and margin availability are checked before signing.':'Recovery: closes your wallet-owned wSOL token account and returns its ENTIRE balance and rent to native SOL. This does not withdraw any funds deposited inside Drift.'}</p></div>}
-       <label className="sn-v6-trade-consent"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I reviewed this devnet action and understand it requires a real wallet signature using test assets.</span></label>
+       <label className="sn-v6-trade-consent"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I reviewed this devnet action. Orders may remain open until cancelled; all actions require my wallet signature with test assets.</span></label>
        <button type="button" className="trade-submit" disabled={!ready||!approved} onClick={()=>void submit()}>{busy?'Awaiting wallet approval…':action === 'initialize' ? 'Initialize Drift Account ↗' : `Review & sign ${action}`} <Icon name="arrowUp" size={16}/></button>
        {!connected&&<div className="sn-v6-trade-connect"><ConnectWallet/><small>Connect Phantom or Solflare to continue.</small></div>}
        {!enableExecution&&<p className="trade-warning">Trading is disabled by project configuration.</p>}

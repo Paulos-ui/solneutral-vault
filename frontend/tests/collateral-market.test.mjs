@@ -38,3 +38,7 @@ test('SDK mint address is compared safely and the market PDA is derived by index
  assert.doesNotMatch(adapter,/market\.mint\.equals\(/);
  assert.doesNotMatch(adapter,/getAccountInfo\(market\.pubkey/);
 });
+
+test('0x17a2 is explained as InvalidOrderIOC, not a program-id problem',()=>{
+ assert.match(meaningfulDriftError(new Error('custom program error: 0x17a2')),/InvalidOrderIOC, 6050/);
+});

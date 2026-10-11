@@ -157,18 +157,25 @@ export async function executeDriftDevnetAction(
       const cap = boundedLimitPrice(rawPrice, action);
       const market = client.getPerpMarketAccount(perpIndex!);
       if (!market) throw new Error('SOL-PERP market unavailable on devnet.');
+      // Drift error 6050 (0x17a2) is InvalidOrderIOC on the previously
+      // encoded limit+IOC combination. A normal bounded limit order is
+      // supported here, but it MAY remain open until a user cancels it.
+      // Never claim an order was immediately executed or fully filled.
+      const freeCollateral = client.getUser(0).getFreeCollateral();
+      if (freeCollateral.lte(new sdk.BN(0))) {
+        throw new Error('Your Drift account has no verified free collateral. Deposit supported devnet collateral before placing an order. No order was sent.');
+      }
       const params = sdk.getLimitOrderParams({
         marketType: sdk.MarketType.PERP,
         marketIndex: perpIndex!,
         direction: action === 'long' ? sdk.PositionDirection.LONG : sdk.PositionDirection.SHORT,
         baseAssetAmount: new sdk.BN(units!.toString()),
         price: new sdk.BN(cap.toString()),
-        // Drift SDK v2.143 uses bitFlags for IOC; immediateOrCancel is not
-        // a supported property of getLimitOrderParams in this version.
-        bitFlags: sdk.OrderParamsBitFlag.ImmediateOrCancel,
+        // Do NOT set the rejected IOC bit flag; this is a regular LIMIT
+        // order, which may rest on Drift. The UI explicitly explains this.
       });
       signature = await client.placePerpOrder(params);
-      description = `Submitted ${action.toUpperCase()} SOL-PERP limit IOC order on Drift devnet (1% oracle price guard; may not fill)`;
+      description = `Submitted ${action.toUpperCase()} SOL-PERP bounded LIMIT order on Drift devnet (1% oracle guard). May rest unfilled until cancelled; verify its actual order status.`;
     }
     const confirmed = await waitForVerifiedSignature(connection, signature);
     return { signature, confirmed, description, userAccount: userId.toBase58() };

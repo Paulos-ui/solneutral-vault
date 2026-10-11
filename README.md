@@ -98,3 +98,7 @@ The developer should independently validate end-to-end browser wallet signing on
 ---
 
 Built by **Web3 supporter** for the Solana ecosystem. Research and software-development preview, not financial advice.
+
+## V7.2 order + chart repair
+
+The observed `0x17a2` error is Drift `InvalidOrderIOC` (6050). V7.2 uses bounded **resting limit orders** with explicit cancellation, historical chart navigation (Older / Newer / Latest), and resilient, validated funding-route fallbacks. This build is still **devnet-only** and cannot guarantee a completed trade or vault deposit. See [`docs/V7_2_ORDER_CHART_FUNDING.md`](docs/V7_2_ORDER_CHART_FUNDING.md).

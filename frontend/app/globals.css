@@ -1314,3 +1314,13 @@ input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border: 2px s
 .sn-v8-wsol-context strong{font-size:15px;color:#d4ffbb}
 .sn-v8-wsol-context p{font-size:11px;line-height:1.6;color:#bed0ba;margin:9px 0 0}
 @media(max-width:450px){.sn-v8-collateral-modes button{font-size:9px;padding:10px 4px}}
+
+/* V7.2 compact metrics, browsable live-reference chart */
+.sn-v72-kpi-compact{font-size:clamp(17px,1.45vw,24px)!important;letter-spacing:-.025em;white-space:nowrap}
+.sn-v72-chart-history{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:4px 16px 11px}
+.sn-v72-chart-history button{font-size:11px;font-weight:700;background:#173a29;border:1px solid #315b40;color:#d7f7cf;border-radius:7px;padding:7px 11px;transition:background .2s ease,border-color .2s ease}
+.sn-v72-chart-history button:hover:not(:disabled){background:#2c6143;border-color:#8be9ae}
+.sn-v72-chart-history button.selected{background:#276240;color:#d2ffb5}
+.sn-v72-chart-history button:disabled{opacity:.43;cursor:not-allowed}
+.sn-v72-chart-history span{margin-left:auto;color:#8dae98;font-size:10px;line-height:1.35}
+@media(max-width:650px){.sn-v72-chart-history span{flex-basis:100%;margin-left:0}}

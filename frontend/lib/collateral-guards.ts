@@ -23,6 +23,9 @@ export function missingWrappedSolTopup(available: bigint, required: bigint): big
 
 export function meaningfulDriftError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
+  if (/0x17a2\b|\b6050\b|InvalidOrderIOC/i.test(message)) {
+    return 'Drift rejected an immediate-or-cancel order (InvalidOrderIOC, 6050). The updated trading flow uses a bounded resting limit order. Check account collateral and cancel any unfilled order when necessary.';
+  }
   if (/0x17c7\b|\b6087\b|SpotMarketNotFound/i.test(message)) {
     return 'Drift rejected the transaction: SpotMarketNotFound (6087). This SOL collateral market is not accepted by the currently deployed Drift program. No deposit was confirmed; check market configuration. Any prepared wSOL remains in your wallet and can be unwrapped.';
   }

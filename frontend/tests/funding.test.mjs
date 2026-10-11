@@ -25,3 +25,12 @@ describe('Drift sourced funding normalization', () => {
     assert.equal(parseDriftFundingResponse({ fundingRates: [sample, sample] }).length, 1);
   });
 });
+
+test('new Drift API envelope retains strict row validation',()=>{
+ const ts=Math.floor(Date.now()/1000)-600;
+ const row={ts:String(ts),fundingRate:'1000000',oraclePriceTwap:'100000000',slot:5};
+ assert.equal(parseDriftFundingResponse({data:{fundingRates:[row]}}).length,1);
+ assert.equal(parseDriftFundingResponse([row]).length,1);
+ assert.equal(parseDriftFundingResponse({records:[row]}).length,1);
+ assert.equal(parseDriftFundingResponse({records:[{...row,oraclePriceTwap:'0'}]}).length,0);
+});
