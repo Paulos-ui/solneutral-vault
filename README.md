@@ -27,6 +27,7 @@ SolNeutral V2 is an in-development, risk-intelligent Solana DeFi research experi
 | Guarded deposit entry point | Implemented — **deposits disabled** |
 | Drift funding observations for SOL-PERP | **Read-only conditional integration** — validates external indexed records and shows unavailable state otherwise |
 | Wallet Lens (`/wallet-lens`) | **Read-only conditional Solana RPC** — retrieves public SOL and canonical mainnet USDC balances, without signing |
+| Drift Lens (`/drift-lens`) | **Read-only conditional verification** — checks Drift V2 User account ownership and discriminator from Solana RPC; displays bounded external indexed records if available |
 | Live Solana vault data and user transaction history | **Not connected** |
 | Wallet connection, secure vault accounting, keeper | **Not implemented in V2 yet** |
 | AI analyst with sourced calculations | **Planned** |
@@ -44,7 +45,7 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/wallet-lens`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
+Open **http://localhost:3000**. Visit `/observatory`, `/risk-lab`, `/wallet-lens`, `/drift-lens`, `/about`, and `/docs`. The Observatory includes a new read-only Drift indexed funding panel. When the upstream API is unavailable, the display explicitly shows no verified data, rather than fake values.
 
 ### Run checks
 
@@ -162,3 +163,27 @@ In `frontend/`, run `npm install`, `npm test` and `npm run build`. Optional: set
 Read-only API: `POST /api/chain/wallet` with `{ "address": "<public Solana key>" }`. Uses only `getBalance` and `getTokenAccountsByOwner` (canonical USDC mint). Input is checked for an actual decoded 32-byte public key, network errors degrade to partial/unavailable, and responses are `no-store`. This endpoint cannot send transactions.
 
 Recheck regularly for newer RPC values; no realtime socket, settled profit calculation or full-wallet valuation is claimed. No private keys or seed phrases should ever be provided. All account addresses are public.
+
+
+## Phase 2D — Drift Account Lens / Source Integrity
+
+`/drift-lens` is an additional **read-only** research instrument. It accepts an actual Drift V2 **User subaccount public key** (not a normal authority wallet address). The server calls Solana mainnet `getAccountInfo` with a limited 8-byte data slice and confirms (a) an RPC slot, (b) program owner `dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH`, (c) a non-executable account, and (d) the Anchor `account:User` discriminator. This establishes only the account type.
+
+Only when the account is confirmed does `/api/drift/account` query the public Drift Data API `/user/{accountId}/positions`, where it strictly projects at most 20 provider-reported records. Amounts are shown as **raw fields**, without assuming scale. Indexed records may be historical. The service does **not** assert actual current positions, USD notional, margin safety, liquidation prices, live leverage, account PnL, settled yield, or execution. An upstream outage or unknown schema displays `unavailable`; no synthetic data is substituted.
+
+This is a server-only, unauthenticated public-read endpoint and must have application-level abuse controls / rate limiting before handling significant real-world traffic. No SDK, secret key, login, signature, deposit, or trade execution is introduced.
+
+Test with `npm test && npm run build` from `frontend/`. If using a private RPC provider, set `SOLANA_RPC_URL` only on the server.
+
+
+## Phase 2E — Position Stress Engine (combined 2C–2E release)
+
+- **Build repair:** `frontend/tsconfig.json` targets `ES2020` so TypeScript accepts `BigInt` in the public-address validator (`frontend/lib/wallet.ts`). This corrects the Vercel error reported for Phase 2C.
+- **Phase 2D included:** `/drift-lens`, read-only program ownership and Anchor User discriminator verification, bounded indexer data. This build includes the full 2D patch; do not install it separately.
+- **Phase 2E added:** `/risk-engine`, interactive manual-input SOL spot/perpetual stress test, directional exposure, hypothetical daily funding, and separate perpetual collateral-buffer approximation. Seven price shocks and deterministic test coverage. `/api/risk/positions` exposes the same bounded calculations.
+- The stress engine is **not connected to a live Drift subaccount**. Actual on-chain position amounts, live margin health and liquidation prices remain unverified and are not shown. No wallet signatures, vault deposits or order execution.
+- Deployment requires **Node.js 22+**, `cd frontend && npm install && npm test && npm run build`.
+
+### Research disclaimer
+
+The position engine uses user-entered hypotheses and excludes venue-specific margin models, slippage, fees, oracles and path-dependent liquidation. A sample scenario is not a real portfolio or trading signal.

@@ -19,6 +19,7 @@ export default function WalletLensPage() {
     <WalletLens />
     <div className="wallet-market-divider"><span>02 / MARKET CONTEXT</span><strong>THE OTHER SIDE OF THE SIGNAL.</strong><span>↘</span></div>
     <FundingPulse/>
+    <div className="drift-page-bridge"><span className="micro-label">NEXT INSTRUMENT / DRIFT SUBACCOUNTS</span><p>Explore program ownership and indexer records for a Drift V2 User account.</p><Link href="/drift-lens">OPEN DRIFT LENS <Icon name="arrowUp" size={16}/></Link></div>
     <div className="wallet-research-cta"><div><span className="micro-label">NEXT / UNDERSTAND THE EXPOSURE</span><h2>Balances are not <em>a hedge.</em></h2><p>Combine public-chain observations with a transparent scenario model. Never mistake wallet holdings or market-wide funding for realized portfolio performance.</p></div><Link className="button-primary" href="/risk-lab">OPEN THE RISK LAB <Icon name="arrowUp" size={17}/></Link></div>
   </div>;
 }

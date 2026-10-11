@@ -9,8 +9,9 @@ import { Icon } from "./Icons";
 const links = [
   { href: "/observatory", label: "Observatory" },
   { href: "/risk-lab", label: "Risk lab" },
+  { href: "/risk-engine", label: "Risk engine" },
   { href: "/wallet-lens", label: "Wallet lens" },
-  { href: "/about", label: "The thesis" },
+  { href: "/drift-lens", label: "Drift lens" },
   { href: "/docs", label: "Docs" },
 ];
 
