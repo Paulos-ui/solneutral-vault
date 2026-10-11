@@ -36,3 +36,11 @@ The field draws two opposing paths in sequence. The user changes hedge size, shi
 - VERIFIED = reserved for sourced/validated on-chain data only.
 
 These are product semantics, not secondary legal disclaimers.
+
+## V5 — Connected Workspace (2026)
+
+The homepage remains editorial, while the connected workspace takes on a compact, high-density financial instrument composition. The four-item primary navigation is **Dashboard, Observatory, Trade Lab, Docs**. An icon rail surfaces **AI Analyst, History, Risk Lab, Documentation, and Settings** without crowding the header. Desktop panels are deeply inked forest-green with 17px corner radii, thin mineral-green strokes, clean typography, and intentionally restrained luminous accents.
+
+**Data integrity is a design requirement, not a footnote:** unverified values render as an em dash, not an invented APR or portfolio value. Model charts are labeled as *illustrative* and may be controlled interactively. Devnet chain reads are explicitly distinguished from public Drift indexer readings, wallet transaction signatures, and hypothetical stress scenarios. No decorative example figure is silently treated as a real portfolio.
+
+**Interaction flow:** Homepage → Connect Phantom/Solflare → Dashboard (real public devnet balance + clear verification state) → Trade Lab (wallet-signed devnet transactions) or AI/History via sidebar. All actions remain wallet-controlled and mainnet custody is unavailable.

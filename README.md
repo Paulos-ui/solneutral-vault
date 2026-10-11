@@ -16,6 +16,7 @@ A spot-long/perpetual-short portfolio can dampen price exposure without eliminat
 | Product surface | User benefit | What is verified? |
 | --- | --- | --- |
 | [Homepage](https://solneutral-vault.vercel.app/) + [Observatory](https://solneutral-vault.vercel.app/observatory) | Bespoke, interactive hedge visualization | Illustrative model only |
+| [Connected Dashboard](https://solneutral-vault.vercel.app/dashboard) | Connected devnet SOL balance, verified wallet signatures, Drift funding and clearly labeled interactive stress models | Devnet RPC / indexed funding when available; hypothetical figures labeled |
 | [Intelligence Terminal](https://solneutral-vault.vercel.app/terminal) | Funding observation, seven-shock matrix, model stress, hedge comparisons, in-page watch thresholds | External funding records when validated; other values modeled |
 | [Risk Lab](https://solneutral-vault.vercel.app/risk-lab) + [Position Risk Engine](https://solneutral-vault.vercel.app/risk-engine) | Explore how spot, short perp, collateral and funding scenarios change outcomes | Deterministic calculations from user's assumptions |
 | [Trade Lab](https://solneutral-vault.vercel.app/trade) | Phantom/Solflare wallet discovery, on-chain Drift user initialization, test SOL collateral deposit/withdrawal, bounded SOL-PERP IOC limit orders | Wallet-signed **DEVNET** transactions, subject to devnet wallet/RPC testing. Not a SolNeutral vault. |
@@ -40,11 +41,11 @@ npm run build
 npm run dev
 ```
 
-Then open `http://localhost:3000/terminal`. Existing Vercel deployments should use **Root Directory `frontend`**. A working page does **not** imply on-chain execution. All keyless browser research works without Railway.
+Then open `http://localhost:3000`. Connect a wallet or visit `/dashboard` for the new wallet-first experience. Existing Vercel deployments should use **Root Directory `frontend`**. A working page does **not** imply on-chain execution. All keyless browser research works without Railway.
 
 ### Read-only Solana and funding
 
-By default the app attempts public mainnet Solana RPC and the Drift public indexed data endpoint. Use a private server-side RPC URL in Vercel if the public RPC rate-limits or denies requests. Failure yields an explicit unavailable state, not simulated live data.
+The public-address Wallet Lens uses mainnet RPC by default; the connected Dashboard and devnet Trade Lab use a separate verified **devnet** RPC. Funding observations are market-level indexed data, not wallet-specific yield. The Drift indexer is queried independently of the wallet network. Use a private server-side RPC URL in Vercel if the public RPC rate-limits or denies requests. Failure yields an explicit unavailable state, not simulated live data.
 
 ### Optional AI (private, never enabled automatically)
 
@@ -70,12 +71,12 @@ See [Technical Architecture](docs/ARCHITECTURE_V3.md), [Vault Release Gates](doc
 
 ## How to use SolNeutral
 
-1. Open the homepage and interact with the hedge balance visualization.
-2. Visit **Intelligence Terminal**. Inspect external funding freshness and adjust spot, short, collateral and funding assumptions. Compare strategy structures and notice buffer warnings.
-3. Visit **Risk Engine** for the full seven-scenario ledger. No theoretical value is described as your real on-chain account.
-4. Enter a public address in **Wallet Lens** or a Drift User subaccount in **Drift Lens** to review read-only evidence.
-5. Connect Phantom or Solflare in **Trade Lab** to test wallet-signed Drift transactions on **DEVNET ONLY**, after acquiring devnet SOL. Test positions are not SolNeutral vault positions.
-6. Ask a question in **Analyst**; inspect the deterministic explanation. Language-model interpretation is an optional locked preview.
+1. Open the homepage, inspect the Hedge Field, and **connect Phantom or Solflare**. A connection from the landing page directs you to the new Dashboard.
+2. Review the Dashboard. It displays verified public devnet wallet SOL when available; funding observations from the Drift indexer; clearly separate, user-adjustable hedge simulations; and links to personal transaction history.
+3. Use the left navigation for **AI Analyst**, **History**, Risk Lab, Wallet Lens and Settings. The top four links are Dashboard, Observatory, Trade Lab and Docs.
+4. Switch the Dashboard chart between funding observations and scenario analysis, adjust size/hedge ratio, or open the deeper **Intelligence Terminal** for multi-scenario research.
+5. Open **Trade Lab** to test wallet-signed Drift transactions on **DEVNET ONLY**, after acquiring devnet SOL. The transaction controls are *not* a SolNeutral pooled vault.
+6. Ask a question in **Analyst**, or inspect a Drift User subaccount in **Drift Lens**. An optional private language model can explain deterministic evidence but cannot trade.
 7. Read **Field Manual** and vault limitations before making any financial decision.
 
 ## Prior work / hackathon disclosure
@@ -95,3 +96,9 @@ This release adds wallet-standard discovery for Phantom and Solflare, a client-s
 **This is not a pooled SolNeutral vault.** Only a personal Drift devnet account receives deposits; our V3 Anchor reference code is not deployed or safe for real assets. Mainnet execution is unavailable. Actual transaction success requires a funded wallet, functional devnet Drift markets and an RPC provider; JavaScript tests are not on-chain integration tests.
 
 From the `frontend` directory, install the new dependencies and run `npm test && npm run typecheck && npm run build`. Optional `NEXT_PUBLIC_DEVNET_RPC_URL` controls the devnet RPC (its genesis hash is checked), `NEXT_PUBLIC_ENABLE_DEVNET_TRADING=false` disables devnet actions. Because any `NEXT_PUBLIC_` variable is visible in browser bundles, restrict RPC keys at the provider or use a proxy. Never publish `ANTHROPIC_API_KEY`. See [Devnet Execution Security](docs/DEVNET_EXECUTION_V4.md).
+
+## Connected workspace — V5 design implementation
+
+The image-led dashboard concept is implemented as real components rather than screenshot placeholders. Panels for SOL balance and wallet activity are backed by a devnet RPC after genesis verification. The funding chart only renders validated Drift indexer observations; it is *not* user's earned yield. Hypothetical PnL and hedge graphs react to adjustable spot and hedge ratios and are visibly marked as simulations. Real portfolio valuation, Drift margin and live liquidation fields are intentionally unavailable until a fully verified protocol integration exists.
+
+The app offers a wallet-first view, a four-item top navigation, and a sidebar for secondary tools. Real wallet funds and mainnet SOLNeutral pooled deposits must not be used in this experimental devnet product.

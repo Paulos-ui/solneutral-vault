@@ -1,6 +1,6 @@
 import type { SVGProps, ReactNode } from "react";
 
-type IconName = "arrow" | "arrowUp" | "arrowLeft" | "cross" | "menu" | "close" | "diagonal" | "shield" | "pulse" | "layers" | "chevron" | "external" | "spark";
+type IconName = "arrow" | "arrowUp" | "arrowLeft" | "cross" | "menu" | "close" | "diagonal" | "shield" | "pulse" | "layers" | "chevron" | "external" | "spark" | "home" | "history" | "book" | "settings" | "wallet" | "clock";
 export function Icon({ name, size = 20, ...props }: SVGProps<SVGSVGElement> & { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, ...props };
   const paths: Record<IconName, ReactNode> = {
@@ -17,6 +17,12 @@ export function Icon({ name, size = 20, ...props }: SVGProps<SVGSVGElement> & { 
     chevron: <><path d="m6 9 6 6 6-6" /></>,
     external: <><path d="M13 5h6v6M19 5l-9 9" /><path d="M19 14v5H5V5h5" /></>,
     spark: <><path d="M12 2 9.6 9.6 2 12l7.6 2.4L12 22l2.4-7.6L22 12l-7.6-2.4L12 2Z" /></>,
+    home: <><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></>,
+    history: <><path d="M3 12a9 9 0 1 0 2.6-6.4M3 4v5h5"/><path d="M12 7v5l3 2"/></>,
+    book: <><path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v14c-3-1-5-1-8 1-3-2-5-2-8-1Z"/><path d="M12 6v14"/></>,
+    settings: <><path d="M4 7h16M4 17h16M9 4v6M16 14v6"/><circle cx="9" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></>,
+    wallet: <><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M6 6V4h12v2M16 13h5"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></>,
   };
   return <svg {...common} aria-hidden="true">{paths[name]}</svg>;
 }

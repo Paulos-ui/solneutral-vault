@@ -29,3 +29,13 @@ Show the separate `vault/solneutral_v3` code and the test checklist. Be explicit
 ### Attribution and disclosure
 
 Present prior SolNeutral V1 material separately from V3 work. No claim of Colosseum or Superteam Nigeria endorsement or acceptance. Show GitHub commits and actual usage evidence.
+
+## V5 Wallet-first product flow (demonstrate with test assets)
+
+1. Open the polished editorial landing page. Highlight the Balance Field and clear value proposition; don't call it an executed trading portfolio.
+2. Click Dashboard. An unconnected viewer sees the wallet gateway. Connect a devnet Phantom/Solflare wallet. If connecting from the homepage header, SolNeutral navigates to the Dashboard automatically.
+3. Show verified devnet balance and recently confirmed transaction signatures. Explain that a balance read does not establish USD portfolio value or trading PnL.
+4. Switch **Scenario** to **Funding** in the chart. Only validated Drift indexed observations display. When unavailable, explain why the UI doesn't manufacture an APY.
+5. Adjust the model hedge position-size slider and price-shock buttons; chart, modeled PnL, risk heatmap and insights update. The model is deterministic, not on-chain collateral health.
+6. Navigate with the compact rail to AI Analyst and History. Use Trade Lab to inspect a small signed devnet transaction only if network and account checks pass.
+7. Explain that independent Anchor vault audit, live Drift portfolio reconciliation and a production keeper are separate remaining steps.

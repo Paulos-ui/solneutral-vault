@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
+import { AppShell } from "@/components/AppShell";
 import { SolanaSessionProvider } from "@/components/SolanaSessionProvider";
 
 export const metadata: Metadata = {
@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><a className="skip-link" href="#content">Skip to content</a><SolanaSessionProvider><SiteHeader/><main id="content">{children}</main><SiteFooter/></SolanaSessionProvider></body></html>;
+  return <html lang="en"><body><a className="skip-link" href="#content">Skip to content</a><SolanaSessionProvider><SiteHeader/><AppShell>{children}</AppShell></SolanaSessionProvider></body></html>;
 }

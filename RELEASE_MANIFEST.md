@@ -1,20 +1,27 @@
-# Complete V4 release manifest
+# SolNeutral V5 — Complete Connected Workspace Release
 
-Cumulative upgrade from the current assembled source, not an incremental hotfix.
+**Founder:** Web3 supporter / @instators  
+**Target:** Colosseum and Superteam Nigeria, with truthful technical claims  
+**Archive:** cumulative root-level source release, not an incremental patch.
 
-| Development stage | Included features |
-| --- | --- |
-| V2 | Signature mineral-green homepage, responsive Hedge Field, Observatory, Risk Lab, About, Docs |
-| V2A–B | Funding Signal data interface, refined first-screen controls |
-| V2C | Read-only Solana Wallet Lens; ES2020 BigInt build fix |
-| V2D | Drift User account provenance and indexed observations |
-| V2E | Position Stress Engine and seven-shock deterministic scenarios |
-| V3 | Intelligence Terminal, explainable analyst, scenario comparisons, in-page alerts, experimental Anchor program source |
-| V4 | Phantom / Solflare connection, devnet-only Drift account actions and SOL-PERP order UI |
+## Included stages
 
-## Distinguish code from production validation
+- V2: bespoke editorial homepage, Observatory, interactive Hedge Field, Risk Lab, About, Docs.
+- V2A–E: Drift indexed funding, responsive hero, wallet and Drift account lenses, deterministic risk engine.
+- V3: research Intelligence Terminal, AI Analyst, Anchor vault research source, documentation.
+- V4: Phantom/Solflare wallet adapter, Drift devnet Trade Lab, native SOL/wSOL correction, Turbopack browser boundary, supported IOC order flags.
+- **V5: premium wallet-first connected Dashboard, four-item primary nav, left icon rail, interactive charts with data provenance, verified devnet SOL balance, honest recent signature history, Settings, accessible wallet gateway, improved Trade Lab introduction, tested scenario data handling.**
 
-- Source code is included for each feature, but not every external API, chain signature, and Anchor procedure has been end-to-end verified.
-- An experimental contract must not be represented as audited or deployed.
-- Live pooled deposits/withdrawals, audited mainnet trading execution and autonomous rebalancing are not implemented.
-- The repo's existing `.git` is never included in or modified by extraction, and existing absent-from-ZIP files are not deleted.
+## Verified here
+
+- Deterministic Node model tests: 45 passed.
+- TypeScript/TSX syntax parsing and CSS stylesheet parsing passed.
+- Cumulative ZIP validated for correct archive root and absence of obvious secret files.
+
+## Not independently verified
+
+- Full `npm run build`, TypeScript semantic checking, and end-to-end browser rendering: npm registry dependencies unavailable in this environment. These **must pass locally** before pushing.
+- Drift real devnet order execution / wallet signatures / Anchor tests not verified. Only devnet execution is implemented, never production pooled custody.
+- Current Drift indexed funding is external and may be unavailable or stale. Live USD portfolio, PnL, yield and margin are intentionally not fabricated.
+
+See START_HERE.md for the minimal extraction and release steps. The existing `.git` is not included or replaced. Files absent from the ZIP are not deleted by unzip.
