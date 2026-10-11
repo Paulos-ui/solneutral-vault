@@ -73,7 +73,10 @@ export async function executeDriftDevnetAction(
   const { client, sdk, config } = await openDevnetClient(connection, wallet);
   const programId = new (await import('@solana/web3.js')).PublicKey(config.DRIFT_PROGRAM_ID);
   try {
-    const userId = await client.getUserAccountPublicKey(0);
+    // The current Drift User account may not exist yet. DriftClient.getUserAccountPublicKey()
+    // uses getUser(), which throws for a wallet without a subscribed User account.
+    // Derive the PDA independently so initialization can proceed on a fresh wallet.
+    const userId = sdk.getUserAccountPublicKeySync(programId, wallet.publicKey, 0);
     const account = await connection.getAccountInfo(userId, 'confirmed');
     if (account && !account.owner.equals(programId)) throw new Error('Invalid Drift user account owner.');
     if (!account && action !== 'initialize') throw new Error('Initialize your Drift devnet account before sending funds or placing orders.');
