@@ -1,233 +1,112 @@
 'use client';
+import {useEffect,useMemo,useState} from 'react';
+import type {DemoMarket} from '@/components/TradeWorkspace';
 
-import {useEffect, useMemo, useState} from 'react';
-
-type Side = 'long' | 'short';
-type DemoPosition = {
-  id: string;
-  side: Side;
-  sizeSol: number;
-  entry: number;
-  leverage: number;
-  openedAt: string;
-};
-
-type ChartPayload = {
-  candles?: { close: number }[];
-  price?: number;
-};
-
-const STORAGE_KEY = 'solneutral-demo-trades';
-
-function loadPositions(): DemoPosition[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(Boolean) as DemoPosition[] : [];
-  } catch {
-    return [];
-  }
+type Direction='long'|'short';
+type DemoPosition={id:string;market:DemoMarket;side:Direction;quantity:number;entry:number;leverage:number;marginUsd:number;openedAt:string};
+type Quote={price:number|null;status:'loading'|'observed'|'stale'|'unavailable';asOf:string|null};
+type MarketResponse={status?:string;price?:number;asOf?:string;message?:string;candles?:{close:number}[]};
+type DemoLedger={positions:DemoPosition[];realizedPnlUsd:number};
+const INITIAL_DEMO_BALANCE=10000;
+const STORE_KEY='solneutral-paper-account-v762';
+const emptyQuote:Quote={price:null,status:'loading',asOf:null};
+const fmtUsd=(value:number)=>`${value<0?'−':''}$${Math.abs(value).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const fmtPrice=(value:number,market:DemoMarket)=>`$${value.toLocaleString('en-US',{minimumFractionDigits:market==='BONK'?8:2,maximumFractionDigits:market==='BONK'?8:2})}`;
+const fmtQuantity=(value:number,market:DemoMarket)=>value.toLocaleString('en-US',{maximumFractionDigits:market==='BONK'?0:4});
+function validPosition(value:unknown):value is DemoPosition{
+ if(!value||typeof value!=='object')return false;
+ const item=value as Partial<DemoPosition>;
+ return typeof item.id==='string'&&item.id.length<90&&(item.market==='SOL'||item.market==='BONK')&&(item.side==='long'||item.side==='short')&&
+  [item.quantity,item.entry,item.leverage,item.marginUsd].every(n=>typeof n==='number'&&Number.isFinite(n)&&n>0)&&
+  typeof item.openedAt==='string';
 }
-
-function pnlFor(position: DemoPosition, current: number): number {
-  const directionalMove = (current - position.entry) * (position.side === 'long' ? 1 : -1);
-  return directionalMove * position.sizeSol * position.leverage;
+function getStoredLedger():DemoLedger{
+ if(typeof window==='undefined')return {positions:[],realizedPnlUsd:0};
+ try{const data=JSON.parse(window.localStorage.getItem(STORE_KEY)??'null') as Partial<DemoLedger>|null;
+  return {positions:Array.isArray(data?.positions)?data.positions.filter(validPosition).slice(0,20):[],
+   realizedPnlUsd:typeof data?.realizedPnlUsd==='number'&&Number.isFinite(data.realizedPnlUsd)?data.realizedPnlUsd:0};
+ }catch{return {positions:[],realizedPnlUsd:0};}
 }
-
-export function DemoTradeDesk() {
-  const [spotPrice, setSpotPrice] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [side, setSide] = useState<Side>('long');
-  const [size, setSize] = useState('1');
-  const [leverage, setLeverage] = useState('2');
-  const [positions, setPositions] = useState<DemoPosition[]>([]);
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    setPositions(loadPositions());
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
-    } catch {
-      // ignore storage write failures
-    }
-  }, [positions]);
-
-  useEffect(() => {
-    let disposed = false;
-    async function refresh(): Promise<void> {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/market/sol-chart?interval=1m', { cache: 'no-store' });
-        const payload = await response.json() as ChartPayload;
-        const latest = typeof payload.price === 'number'
-          ? payload.price
-          : Array.isArray(payload.candles) && payload.candles.length > 0
-            ? payload.candles[payload.candles.length - 1]?.close
-            : null;
-        if (!response.ok || typeof latest !== 'number' || !Number.isFinite(latest)) {
-          throw new Error('Demo market reference is unavailable right now.');
-        }
-        if (!disposed) {
-          setSpotPrice(latest);
-          setError('');
-        }
-      } catch (reason) {
-        if (!disposed) {
-          setError(reason instanceof Error ? reason.message : 'Could not load SOL price.');
-        }
-      } finally {
-        if (!disposed) setLoading(false);
-      }
-    }
-    void refresh();
-    const timer = window.setInterval(() => { void refresh(); }, 30000);
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  const currentSize = Number(size);
-  const currentLeverage = Number(leverage);
-  const notional = spotPrice !== null && Number.isFinite(currentSize) && Number.isFinite(currentLeverage)
-    ? spotPrice * currentSize * currentLeverage
-    : null;
-
-  const totalPnl = useMemo(() => {
-    if (spotPrice === null) return null;
-    return positions.reduce((sum, position) => sum + pnlFor(position, spotPrice), 0);
-  }, [positions, spotPrice]);
-
-  function openDemoTrade(): void {
-    setMessage('');
-    if (spotPrice === null) {
-      setMessage('Wait for the SOL price reference before opening a demo trade.');
-      return;
-    }
-    if (!Number.isFinite(currentSize) || currentSize <= 0 || currentSize > 500) {
-      setMessage('Choose a demo size from 0.1 to 500 SOL.');
-      return;
-    }
-    if (!Number.isFinite(currentLeverage) || currentLeverage < 1 || currentLeverage > 10) {
-      setMessage('Choose leverage from 1x to 10x.');
-      return;
-    }
-    const position: DemoPosition = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      side,
-      sizeSol: currentSize,
-      entry: spotPrice,
-      leverage: currentLeverage,
-      openedAt: new Date().toISOString(),
-    };
-    setPositions((items) => [position, ...items].slice(0, 8));
-    setMessage(`Demo ${side} opened at $${spotPrice.toFixed(2)}. No on-chain order was sent.`);
+function positionPnl(position:DemoPosition,price:number):number{
+ return (price-position.entry)*position.quantity*(position.side==='long'?1:-1);
+}
+export function DemoTradeDesk({market}:{market:DemoMarket}){
+ const [quotes,setQuotes]=useState<Record<DemoMarket,Quote>>({SOL:emptyQuote,BONK:emptyQuote});
+ const [side,setSide]=useState<Direction>('long');
+ const [marginInput,setMarginInput]=useState('100');
+ const [leverage,setLeverage]=useState('2');
+ const [ledger,setLedger]=useState<DemoLedger>({positions:[],realizedPnlUsd:0});
+ const [hydrated,setHydrated]=useState(false);
+ const [message,setMessage]=useState('');
+ useEffect(()=>{setLedger(getStoredLedger());setHydrated(true);},[]);
+ useEffect(()=>{if(!hydrated)return;try{window.localStorage.setItem(STORE_KEY,JSON.stringify(ledger));}catch{}},[ledger,hydrated]);
+ useEffect(()=>{
+  let active=true;
+  async function update(){
+   await Promise.all((['SOL','BONK'] as const).map(async symbol=>{
+    try{
+     const response=await fetch(`/api/market/sol-chart?interval=1m&market=${symbol}`,{cache:'no-store'});
+     const result=await response.json() as MarketResponse;
+     const price=result.price;
+     const status=result.status==='observed'?'observed':result.status==='stale'?'stale':'unavailable';
+     const quote:Quote={price:response.ok&&typeof price==='number'&&Number.isFinite(price)&&price>0?price:null,status:response.ok?status:'unavailable',asOf:result.asOf??null};
+     if(active)setQuotes(previous=>({...previous,[symbol]:quote}));
+    }catch{if(active)setQuotes(previous=>({...previous,[symbol]:{price:null,status:'unavailable',asOf:null}}));}
+   }));
   }
-
-  function closePosition(id: string): void {
-    setPositions((items) => items.filter((item) => item.id !== id));
-  }
-
-  function clearAll(): void {
-    setPositions([]);
-    setMessage('Demo positions cleared.');
-  }
-
-  return (
-    <section className="sn-dash-card sn-demo-trade" aria-label="Demo SOL trading">
-      <div className="sn-dash-card-head">
-        <div>
-          <span className="sn-eyebrow"><i /> SOLNEUTRAL · DEMO TRADING</span>
-          <h2>Trade SOL in demo mode</h2>
-          <p>Practice a simple long or short idea using the live SOL/USD reference price. No wallet signature or real execution is required.</p>
-        </div>
-        <span className="sn-dash-tag">SIMULATION</span>
-      </div>
-
-      <div className="sn-demo-grid">
-        <article className="sn-demo-stat">
-          <span>Reference price</span>
-          <strong>{loading ? 'Loading…' : spotPrice === null ? '—' : `$${spotPrice.toFixed(2)}`}</strong>
-          <small>Coinbase SOL/USD spot reference</small>
-        </article>
-        <article className="sn-demo-stat">
-          <span>Open demo trades</span>
-          <strong>{positions.length}</strong>
-          <small>Stored in this browser only</small>
-        </article>
-        <article className="sn-demo-stat">
-          <span>Total demo PnL</span>
-          <strong>{totalPnl === null ? '—' : `${totalPnl >= 0 ? '+' : '-'}$${Math.abs(totalPnl).toFixed(2)}`}</strong>
-          <small>Marked against the latest reference price</small>
-        </article>
-      </div>
-
-      <div className="sn-demo-side-select" role="group" aria-label="Demo trade direction">
-        <button type="button" className={side === 'long' ? 'active buy' : 'buy'} onClick={() => setSide('long')}>↗ Long</button>
-        <button type="button" className={side === 'short' ? 'active sell' : 'sell'} onClick={() => setSide('short')}>↘ Short</button>
-      </div>
-
-      <div className="sn-demo-inputs">
-        <label>
-          Size (SOL)
-          <input type="text" inputMode="decimal" value={size} onChange={(event) => setSize(event.target.value)} placeholder="1" />
-        </label>
-        <label>
-          Leverage
-          <select value={leverage} onChange={(event) => setLeverage(event.target.value)}>
-            {[1, 2, 3, 5, 10].map((item) => <option key={item} value={item}>{item}x</option>)}
-          </select>
-        </label>
-      </div>
-
-      <div className="sn-demo-ticket-row">
-        <div className="sn-demo-ticket-note">
-          <strong>{side === 'long' ? 'Long idea' : 'Short idea'}</strong>
-          <span>{notional === null ? 'Waiting for market data' : `Estimated notional: $${notional.toFixed(2)}`}</span>
-        </div>
-        <button type="button" className="sn-demo-open" onClick={openDemoTrade}>Open demo trade ↗</button>
-      </div>
-
-      {error && <p className="sn-reserve-alert">{error}</p>}
-      {message && <p className="sn-demo-message">{message}</p>}
-
-      <div className="sn-demo-positions">
-        <div className="sn-demo-positions-head">
-          <strong>Active demo trades</strong>
-          <button type="button" className="sn-inline-btn" disabled={positions.length === 0} onClick={clearAll}>Clear all</button>
-        </div>
-        {positions.length === 0 ? (
-          <div className="sn-demo-empty">Open a demo long or short to test the trade flow without using real funds.</div>
-        ) : (
-          <div className="sn-demo-list">
-            {positions.map((position) => {
-              const pnl = spotPrice === null ? null : pnlFor(position, spotPrice);
-              return (
-                <article key={position.id} className="sn-demo-position">
-                  <div>
-                    <span className={`sn-demo-chip ${position.side}`}>{position.side.toUpperCase()}</span>
-                    <strong>{position.sizeSol} SOL · {position.leverage}x</strong>
-                    <small>Entry ${position.entry.toFixed(2)}</small>
-                  </div>
-                  <div className="sn-demo-position-right">
-                    <strong className={pnl !== null && pnl < 0 ? 'down' : 'up'}>{pnl === null ? '—' : `${pnl >= 0 ? '+' : '-'}$${Math.abs(pnl).toFixed(2)}`}</strong>
-                    <button type="button" onClick={() => closePosition(position.id)}>Close</button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <p className="sn-fineprint">Demo trades are local simulations only. They do not create on-chain orders, custody assets, or promise returns.</p>
-    </section>
-  );
+  void update();const timer=window.setInterval(()=>{void update();},30000);
+  return()=>{active=false;window.clearInterval(timer);};
+ },[]);
+ const quote=quotes[market];
+ const marginUsd=Number(marginInput);
+ const leverageValue=Number(leverage);
+ const tradeNotional=Number.isFinite(marginUsd)?marginUsd*leverageValue:null;
+ const floating=useMemo(()=>ledger.positions.reduce((sum,position)=>{
+  const current=quotes[position.market].price;
+  return current===null?sum:sum+positionPnl(position,current);
+ },0),[ledger.positions,quotes]);
+ const reserved=useMemo(()=>ledger.positions.reduce((sum,position)=>sum+position.marginUsd,0),[ledger.positions]);
+ const cash=INITIAL_DEMO_BALANCE+ledger.realizedPnlUsd;
+ const buyingPower=cash-reserved;
+ const missingValuation=ledger.positions.some(position=>quotes[position.market].price===null);
+ const canTrade=hydrated&&quote.status==='observed'&&quote.price!==null;
+ function openPosition(){
+  setMessage('');
+  if(!canTrade||quote.price===null){setMessage('Market quote is not fresh. Wait for an observed Coinbase price before paper trading.');return;}
+  if(!Number.isFinite(marginUsd)||marginUsd<10||marginUsd>2000){setMessage('Use $10–$2,000 in demo margin.');return;}
+  if(marginUsd>buyingPower){setMessage('Insufficient virtual cash. Close an open position or use a smaller demo margin.');return;}
+  if(ledger.positions.length>=20){setMessage('Close an existing demo trade before adding more.');return;}
+  const quantity=marginUsd*leverageValue/quote.price;
+  if(!Number.isFinite(quantity)||quantity<=0){setMessage('Unable to calculate position size from the reference quote.');return;}
+  const newPosition:DemoPosition={id:`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,market,side,quantity,entry:quote.price,leverage:leverageValue,marginUsd,openedAt:new Date().toISOString()};
+  setLedger(previous=>({...previous,positions:[newPosition,...previous.positions]}));
+  setMessage(`Demo ${market} ${side.toUpperCase()} opened at ${fmtPrice(quote.price,market)}. No wallet transaction was created.`);
+ }
+ function closePosition(position:DemoPosition){
+  const current=quotes[position.market];
+  if(current.price===null||current.status!=='observed'){setMessage(`Can't close ${position.market} yet: a fresh market quote is required.`);return;}
+  const pnl=positionPnl(position,current.price);
+  setLedger(previous=>({positions:previous.positions.filter(item=>item.id!==position.id),realizedPnlUsd:previous.realizedPnlUsd+pnl}));
+  setMessage(`Demo trade closed at ${fmtPrice(current.price,position.market)}. Realized simulated PnL ${fmtUsd(pnl)}.`);
+ }
+ function resetAccount(){
+  if(ledger.positions.length>0){setMessage('Close each position before resetting the practice account.');return;}
+  setLedger({positions:[],realizedPnlUsd:0});setMessage('Practice balance reset to $10,000.');
+ }
+ return <section className="sn-dash-card sn-demo-trade sn-v762-order-ticket" aria-label={`${market} demo order ticket`}>
+   <div className="sn-dash-card-head"><div><span className="sn-eyebrow"><i/> PAPER ACCOUNT · {market}/USD</span><h2>Order ticket</h2><p>Practice long and short trades with a virtual USD balance.</p></div><span className="sn-dash-tag">DEMO</span></div>
+   <div className="sn-v762-order-quote"><div><span>{market} spot reference</span><strong>{quote.price===null?'—':fmtPrice(quote.price,market)}</strong></div><span className={quote.status==='observed'?'sn-v762-quote-fresh':'sn-v762-quote-wait'}>{quote.status==='observed'?'● Observed':quote.status==='stale'?'Delayed price':'Awaiting quote'}</span></div>
+   <div className="sn-v762-paper-balance"><div><span>Virtual equity</span><strong>{missingValuation?'—':fmtUsd(cash+floating)}</strong></div><div><span>Free demo cash</span><strong>{fmtUsd(buyingPower)}</strong></div></div>
+   <div className="sn-demo-side-select" role="group" aria-label="Choose paper-trade direction"><button type="button" className={side==='long'?'active buy':'buy'} aria-pressed={side==='long'} onClick={()=>setSide('long')}>↗ Long</button><button type="button" className={side==='short'?'active sell':'sell'} aria-pressed={side==='short'} onClick={()=>setSide('short')}>↘ Short</button></div>
+   <div className="sn-demo-inputs sn-v762-order-inputs"><label>Demo margin (USD)<input type="number" min="10" max="2000" step="10" inputMode="decimal" value={marginInput} onChange={event=>setMarginInput(event.target.value)}/></label><label>Leverage<select value={leverage} onChange={event=>setLeverage(event.target.value)}>{[1,2,3,5,10].map(value=><option key={value} value={value}>{value}x</option>)}</select></label></div>
+   <div className="sn-v762-estimate"><div><span>Position notional</span><strong>{tradeNotional!==null&&Number.isFinite(tradeNotional)?fmtUsd(tradeNotional):'—'}</strong></div><div><span>Estimated token size</span><strong>{tradeNotional!==null&&quote.price!==null?`${fmtQuantity(tradeNotional/quote.price,market)} ${market}`:'—'}</strong></div></div>
+   <button type="button" className="sn-demo-open sn-v762-order-submit" disabled={!canTrade} onClick={openPosition}>Open demo {side} ↗</button>
+   <p className="sn-v762-learn-note">At {leverage}x leverage, a 1% price move changes your virtual margin by about {leverageValue}%, before costs. No real trade is sent.</p>
+   {message&&<p className="sn-demo-message" role="status">{message}</p>}
+   <div className="sn-demo-positions"><div className="sn-demo-positions-head"><strong>Open paper positions ({ledger.positions.length})</strong><button type="button" className="sn-inline-btn" disabled={ledger.positions.length>0} onClick={resetAccount}>Reset $10k</button></div>
+    {ledger.positions.length===0?<div className="sn-demo-empty">Start with a $100 virtual margin and try a long or short. Your testnet SOL stays untouched.</div>:
+     <div className="sn-demo-list">{ledger.positions.map(position=>{const current=quotes[position.market];const pnl=current.price===null?null:positionPnl(position,current.price);return <article key={position.id} className="sn-demo-position"><div><span className={`sn-demo-chip ${position.side}`}>{position.market} · {position.side.toUpperCase()}</span><strong>{fmtQuantity(position.quantity,position.market)} {position.market} · {position.leverage}x</strong><small>Entry {fmtPrice(position.entry,position.market)} · Margin {fmtUsd(position.marginUsd)}</small></div><div className="sn-demo-position-right"><strong className={pnl!==null&&pnl<0?'down':'up'}>{pnl===null?'—':fmtUsd(pnl)}</strong><button type="button" onClick={()=>closePosition(position)} disabled={current.status!=='observed'}>Close</button></div></article>})}</div>}
+   </div>
+   <p className="sn-fineprint">Demo capital, equity and PnL are simulated and browser-local. Quotes are external Coinbase spot references. No order fills, fees, funding, slippage, liquidations or real yield are modeled.</p>
+ </section>;
 }

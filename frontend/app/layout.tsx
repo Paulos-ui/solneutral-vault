@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "A risk-intelligent research interface for understanding delta-neutral strategies on Solana. Explore hedge exposure, funding assumptions, and modeled scenarios without yield promises.",
   keywords: ["Solana", "Delta neutral", "Risk research", "Hedging", "Testnet SOL", "Wallet reserve", "Simulation"],
   openGraph: { title: "SolNeutral / The Hedge Observatory", description: "Look beyond the yield. See the risk.", type: "website" },
-  icons: { icon: '/favicon.ico', shortcut: '/favicon.ico', apple: '/favicon.ico' },
+  icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: 'any' }], shortcut: '/favicon.ico' },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

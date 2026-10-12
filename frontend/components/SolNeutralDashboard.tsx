@@ -4,7 +4,6 @@ import {useCallback,useEffect,useMemo,useState,type ReactNode} from 'react';
 import {motion,useReducedMotion} from 'framer-motion';
 import {useConnection,useWallet} from '@solana/wallet-adapter-react';
 import {ConnectWallet} from '@/components/ConnectWallet';
-import {BrandMark} from '@/components/Brand';
 import {Icon} from '@/components/Icons';
 import {SolPriceChart} from '@/components/SolPriceChart';
 import {useSolNeutralLive} from '@/lib/use-solneutral-live';
@@ -46,7 +45,7 @@ export function SolNeutralDashboard(){
  return <div className="sn-dashboard">
   {!connected?<div className="sn-connect-gateway"><div className="sn-connect-copy"><span className="sn-eyebrow"><i/> SOLNEUTRAL · SOLANA TESTNET</span><h1>YOUR SOL.<br/><em>YOUR CONTROL.</em></h1><p>Connect Phantom or Solflare to see your testnet SOL, explore market research, and manage a wallet-owned SOL reserve. No Drift collateral or USDC needed.</p><ConnectWallet/><div className="sn-connect-privacy"><Icon name="shield" size={16}/> Wallet-owned reserve · No seed phrases · Testnet only</div><Link href="/observatory" className="sn-secondary-link">Explore the Observatory <Icon name="arrowUp" size={16}/></Link></div><div className="sn-gateway-art" aria-hidden="true"><div className="sn-gateway-orbit sn-gateway-orbit-a"/><div className="sn-gateway-orbit sn-gateway-orbit-b"/><div className="sn-gateway-orbit sn-gateway-orbit-c"/><div className="sn-gateway-center"><span>Δ</span><strong>SOL<br/>TESTNET</strong></div></div></div>:
   <>
-    <div className="sn-dashboard-intro"><div><span className="sn-eyebrow"><i/> CONNECTED WORKSPACE · SOLANA TESTNET</span><h1><BrandMark size={43}/> SolNeutral <span className="sn-dashboard-subtitle">/ SOL Testnet</span></h1><p>Your wallet, your personal SOL reserve, and clearly identified market research.</p></div><div className="sn-intro-actions"><button onClick={refresh} type="button" title="Refresh verified wallet balances"><Icon name="pulse" size={16}/> Refresh</button><Link href="/trade" className="sn-trade-cta">Deposit / Withdraw <Icon name="arrowUp" size={17}/></Link></div></div>
+    <div className="sn-dashboard-intro"><div><span className="sn-eyebrow"><i/> CONNECTED WORKSPACE</span><h1>Your workspace</h1><p>Live wallet balances, demo trading, and market research in one place.</p></div><div className="sn-intro-actions"><button onClick={refresh} type="button" title="Refresh verified wallet balances"><Icon name="pulse" size={16}/> Refresh</button><Link href="/trade" className="sn-trade-cta">Open Trade Lab <Icon name="arrowUp" size={17}/></Link></div></div>
     <div className="sn-data-banners"><span className={`sn-data-banner ${account.status==='verified'?'is-on':''}`}><i/>{account.status==='verified'?'TESTNET VERIFIED':account.status==='loading'?'VERIFYING TESTNET':'TESTNET NOT VERIFIED'}</span><span>RPC: LIVE WALLET READS</span><span>RESERVE: WALLET CONTROLLED</span><span>SCENARIOS: SIMULATED</span></div>
     <div className="sn-kpi-grid">
       <Card title="Wallet SOL" icon="wallet" subtitle="Native SOL · Solana testnet" accent><span>{formatObservedNumber(account.sol,4)}</span><small>SOL</small></Card>

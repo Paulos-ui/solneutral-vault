@@ -1,26 +1,12 @@
-# START HERE — SolNeutral V7.6.1
+# SolNeutral V7.6.2 — START HERE
 
-## Fast deployment
+Deploy into the EXISTING `solneutral-vault` repository. Unzip at repo root, not inside `frontend`.
 
-1. Extract the ZIP directly into your existing repository root.
-2. Commit and push.
-3. Redeploy on Vercel.
+1. Open `/dashboard`: you should see **Your workspace** without the duplicated logo or testnet name. The navigation still shows SolNeutral branding.
+2. Open `/trade`: **SOL/BONK chart on left** and **Long/Short paper ticket on right** on desktop.
+3. Switch between SOL and BONK to inspect fetched Coinbase spot references. No fallback values are fabricated; unsupported/unavailable quotes prevent new positions.
+4. Try $100 demo margin, 2x leverage and a long or short; observe local simulated PnL, close a position, or reset to $10,000.
+5. Scroll to the separate wallet-owned reserve, connect a testnet wallet, request test SOL or visit `https://faucet.solana.com/`, and test confirmed wrap/unwrap transactions.
+6. Verify the SolNeutral favicon in Chrome; hard-refresh if Chrome has cached the old icon.
 
-## What to verify after deploy
-
-1. Open `/dashboard` and confirm the tighter KPI wording.
-2. Open `/trade` and confirm:
-   - real reserve section,
-   - demo trade section,
-   - quick-start steps,
-   - SOL price chart.
-3. Confirm the browser tab shows the SolNeutral icon.
-4. Connect a wallet on Solana testnet.
-5. Use `Get 0.5 test SOL`.
-6. Open a demo trade and confirm it appears under Active demo trades.
-
-## Current product position
-
-SolNeutral now demonstrates two clear interaction layers:
-- real wallet-owned reserve actions on Solana testnet, and
-- simulated SOL trading for a smoother demo experience.
+**Always distinguish** simulated trades from real testnet wallet actions. This release does not introduce a testnet AMM, liquidity pool, or smart-contract trading protocol.
