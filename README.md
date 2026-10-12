@@ -1,116 +1,29 @@
-# SolNeutral V7.5.4 — Receive-first collateral upgrade
+# SolNeutral V7.6 — SOL Testnet Reserve
 
-**Current delivery:** V7.5.4 preserves V7.5.3 type safety and adds wallet-signed creation of the exact Drift quote-mint USDC receiving account, verified balances, copyable receive addresses, and deposit/withdraw controls that wait for real tokens. Cumulative source retains SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
+**SolNeutral** is a wallet-first Solana research interface with a self-custodied **SOL testnet reserve**, market charts, hedge scenario modelling, and an operator-hosted **SolNeutral AI** analyst.
 
-**Network:** Drift wallet-signed execution remains on Solana devnet. No compatible testnet markets or end-to-end signed collateral changes were verified. See [`docs/V7_5_PRODUCT_UPGRADE.md`](docs/V7_5_PRODUCT_UPGRADE.md), [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md), and [`START_HERE.md`](START_HERE.md).
+**Founder:** Web3 supporter · [@instators](https://x.com/instators) · [GitHub](https://github.com/Paulos-ui/solneutral-vault) · [Production demo](https://solneutral-vault.vercel.app)
 
----
+## Current functionality
 
-# SolNeutral
+- **Wallet-connected dashboard:** reads the native SOL balance and recent public signatures from a verified Solana *testnet* RPC. It separately reads any SOL already held as wrapped SOL by the connected wallet.
+- **Trade Lab → SOL Reserve:** deposit means **wrap** native testnet SOL in the wallet's associated wSOL token account. Withdrawal closes that account and **unwraps the entire balance** into native SOL. Both require wallet signatures and verified network checks. No Drift, matching USDC mint or SolNeutral contract is needed.
+- **SolNeutral AI:** read-only AI analysis available through a privately configured server key. The assistant cannot approve wallet transactions.
+- **Research:** SOL/USD historical chart, scenario analysis, and a hedge-model dashboard; hypothetical results are always distinct from actual wallet balances and executed transactions.
+- **Navigation and UI:** original dark mineral-green interface, connected workspace, compact sidebar and Dashboard / Observatory / Trade Lab / Docs top navigation.
 
-**A more transparent way to hedge on Solana.**
+## A crucial distinction
 
-SolNeutral is a wallet-first DeFi research and devnet execution workspace for understanding long-spot/short-perpetual strategies. Its differentiator is **visible risk**: each data tile distinguishes public blockchain observations, indexed Drift market records, user-controlled signed test transactions, and reproducible hypothetical models.
+**Wallet-owned wSOL is not a DeFi vault deposit.** A reserve deposit does not transfer custody to the SolNeutral team or an on-chain SolNeutral smart contract, does not pay yield, and does not establish a leveraged or delta-neutral trading position. Historical Drift SDK and Anchor/Rust prototype material remains in this repository for reference, but the active V7.6 wallet transaction flow does not use those modules.
 
-**Founder:** Web3 supporter · **X:** [@instators](https://x.com/instators) · **GitHub:** [paulos-ui](https://github.com/Paulos-ui) · **Ecosystem:** Solana, Drift
+**All testing stays on Solana testnet.** Devnet SOL, USDC and wallets are network-specific; an old devnet balance will not show up as testnet funds. Only valueless testnet SOL should be used, and public testnet faucets are not guaranteed to work.
 
-> **Status:** Research/development preview with wallet-signed **Drift devnet** execution. No production SolNeutral pooled vault, mainnet deployment or audited deposit service. This project is not endorsed by Colosseum or Superteam Nigeria.
+## Deployment
 
-## Collateral receive flow in V7.5.4
+See [`START_HERE.md`](START_HERE.md) for the exact one-block Git Bash extract/commit/push workflow and the live wallet demo procedure. Vercel Root Directory remains `frontend`.
 
-Trade Lab → Collateral → USDC now automatically verifies the live Drift Spot Market 0 mint and balances. **Prepare receiving account** optionally creates your wallet-owned SPL token account with a signed devnet transaction. Copy the wallet, token account and exact mint; obtain matching-mint test collateral from a compatible source, refresh, then deposit. This does **not** mint or distribute USDC. Standard Circle devnet USDC is a different mint from the one presently observed on this Drift market. A successful preflight does not prove signed deposits or withdrawals will succeed. Details: [`docs/V7_4_COLLATERAL_READINESS.md`](docs/V7_4_COLLATERAL_READINESS.md).
+The frontend RPC is `NEXT_PUBLIC_TESTNET_RPC_URL`, defaulting to `https://api.testnet.solana.com`. Configure private `ANTHROPIC_API_KEY` in Vercel, never in the browser; apply a WAF/rate limit to the public AI route. See [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md) for detailed verification boundaries.
 
-## What makes SolNeutral useful
+## Status
 
-The traditional DeFi dashboard can display a tempting APR without communicating the risk that makes it possible. SolNeutral explores the opposite approach: the first screen is an actual workspace, not an oversized marketing presentation; the trader sees wallet state, funding observations, risk assumptions and transaction controls with explicit provenance and caveats.
-
-## Product walkthrough
-
-1. **Landing page.** Explore the animated Hedge Field and choose the dashboard or the documentation.
-2. **Connect Phantom or Solflare** using the wallet modal. The homepage opens the connected dashboard after successful connection.
-3. **Dashboard.** Inspect real devnet wallet SOL and recent signatures where verified. Explore market-wide indexed SOL-PERP funding and a *clearly marked* hypothetical shock model. A dash means missing evidence, not zero risk.
-4. **Observatory.** Manipulate the illustrative hedge balance, view funding records, retry the source and expand the technical exposure study.
-5. **Trade Lab.** Four compact panels: **Trade**, **Collateral**, **Account**, **Orders**. Operations interact only with a user-owned Drift devnet account and require network checks, explicit acknowledgement and a wallet signature. Small bounded resting-limit SOL-PERP orders are not guaranteed to fill.
-6. **AI Analyst.** Ask natural-language risk questions; the deterministic model works without any paid API. SolNeutral AI uses an operator-hosted private API key with no visitor-entered access token. It remains strictly read-only.
-7. **Risk Lab.** Adjust notional, hedge ratio, price movement, funding and duration. No simulated output is claimed as verified PnL.
-8. **History and Settings.** Review recent Solana signatures and inspect network/signer settings.
-9. **Docs.** The persistent left rail remains available while reading the technical/user guide.
-
-### Compact navigation
-
-| Persistent top navigation | Left workspace rail |
-| --- | --- |
-| Dashboard · Observatory · Trade Lab · Docs | AI Analyst · Activity History · Risk Lab · Settings (plus quick workspace links) |
-
-In the app, clicking the SolNeutral brand returns to **Dashboard**. On the public homepage it returns to the landing page.
-
-## Verified vs modeled
-
-| Data/feature | Current status |
-| --- | --- |
-| Native devnet SOL wallet balance | From RPC after checking genesis hash; requires connected wallet |
-| Recent wallet signature records | Public RPC observations, not decoded trading fills |
-| SOL-PERP indexed funding | Drift indexer, shown only when records validate; may be stale or unavailable |
-| Hedge shock / basis / funding estimates | Deterministic scenario models, not realized PnL |
-| Live Drift collateral ratio, liquidation health and verified realized PnL | **Not yet implemented**; never fabricated |
-| Phantom/Solflare wallet signing | Implemented for devnet workflows, full external wallet compatibility requires end-to-end testing |
-| Drift deposit, withdraw, create account, bounded order, cancel | SDK flows for **devnet test assets**; transactions require end-to-end verification |
-| SolNeutral pooled strategy deposits and keeper | **Not enabled**; experimental Anchor source is separate from the frontend |
-
-**Deposits to Drift are not deposits to a SolNeutral vault.** Native devnet SOL is wrapped to wSOL before Drift deposit, with separate wallet signatures. Withdrawals return wSOL. Neither balances nor actual PnL can be inferred from a signature alone.
-
-## Architecture
-
-- **Next.js 16 / React 19 / TypeScript** application in `frontend/`, hosted on Vercel.
-- **Tailwind + custom CSS + Framer Motion** for the original interface and animated hedge visualization.
-- **Solana Wallet Adapter + @solana/web3.js** for wallet sessions and devnet RPC.
-- **Drift SDK** loaded in the signed execution path for user-owned test operations.
-- **Next.js API routes** for server-side indexed funding collection and privately configured language-model interpretation.
-- **Pure deterministic mathematics** for scenario and risk models. No simulated data is relabeled as actual market history.
-- **Anchor/Rust research vault** in `vault/solneutral_v3`, intentionally disconnected from live trading. Not compiled, deployed or security audited in this release.
-- **Historical V1 materials** in `legacy/`, retained for provenance and discussion of improvements.
-
-## Backend and Drift onboarding on Vercel (V6.1)
-
-**There is no separate Railway backend to deploy.** The active `/api/*` endpoints are Next.js Route Handlers deployed as part of the `frontend` project on Vercel. The old Flask backend is in `legacy/` and is not used by the current application.
-
-Keep your existing Vercel project, set **Root Directory** to `frontend`, configure `NEXT_PUBLIC_DEVNET_RPC_URL`, `NEXT_PUBLIC_ENABLE_DEVNET_TRADING`, and optional private `SOLANA_RPC_URL` and AI keys in Settings > Environment Variables, then redeploy. Visit `/api/status` and Settings > Backend & data services to verify. **Never commit private API tokens or seed phrases.**
-
-In **Trade Lab** a visible account-setup banner leads to **Account > Initialize Drift Account** when a connected devnet wallet has no verified Drift User account. Signing an initialization transaction costs test SOL and does not give custody to SolNeutral. Detailed instructions: [`docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md`](docs/VERCEL_BACKEND_AND_DRIFT_SETUP.md).
-
-## Run locally
-
-Requires a current Node.js LTS release and npm.
-
-```bash
-cd frontend
-npm install
-npm test
-npm run typecheck
-npm run build
-npm run dev
-```
-
-Open `http://localhost:3000`. Never upload your `.env.local`, wallet seeds or signing keys. Use server-side variables for any AI provider credential. If Drift or RPC responses are unavailable, the UI should say so clearly; do not backfill with made-up rates.
-
-### Production/deployment guardrails
-
-The developer should independently validate end-to-end browser wallet signing on devnet, ensure the RPC targets devnet, confirm transaction signatures and actual outcomes on Solana Explorer, and keep mainnet vault deposits disabled. Never claim an experimental vault is audited. See `docs/V6_RELEASE.md` and `docs/VAULT_SECURITY_GATES.md`.
-
-## Colosseum / Superteam Nigeria demonstration
-
-**Problem:** Yield-focused DeFi interfaces often obscure funding reversals, margin risk, and the distinction between backtests and deployed positions.
-
-**Demonstration:** Start on the first-screen hedge animation, connect a devnet wallet, inspect the compact dashboard, alter a price shock, open funding provenance, switch to Trade Lab, and explain exactly which steps require user signatures. Use the AI Analyst to explain why a near-zero delta does not guarantee a safe strategy.
-
-**Originality:** A unified user experience centered on verifiable inputs and explicit model boundaries rather than unsupported yield promises. Prior SolNeutral code predates the V6 work; the project should disclose reused components in any hackathon submission and clearly identify what was built during the eligible competition period.
-
-**Roadmap:** Decode verified Drift trading position and collateral state; add complete verified fills and PnL; expand indexer provenance and monitoring; build, test and independently assess Anchor vault custody/share logic before any production deposits. For details see `docs/ENGINEERING_PLAN.md`.
-
----
-
-Built by **Web3 supporter** for the Solana ecosystem. Research and software-development preview, not financial advice.
-
-## V7.2 order + chart repair
-
-The observed `0x17a2` error is Drift `InvalidOrderIOC` (6050). V7.2 uses bounded **resting limit orders** with explicit cancellation, historical chart navigation (Older / Newer / Latest), and resilient, validated funding-route fallbacks. This build is still **devnet-only** and cannot guarantee a completed trade or vault deposit. See [`docs/V7_2_ORDER_CHART_FUNDING.md`](docs/V7_2_ORDER_CHART_FUNDING.md).
+The V7.6 code is packaged for deployment; it has **not yet been independently validated end-to-end by a production build and signed Solana testnet deposit/withdrawal cycle**. Verify that Vercel builds successfully, then test with a small amount and observe both transaction signatures and balance changes. Historical docs under `docs/` may describe earlier Drift/devnet versions and are not current operating instructions.

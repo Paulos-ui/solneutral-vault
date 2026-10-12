@@ -1,17 +1,23 @@
-# SolNeutral V7.5.4 | Receive-first collateral onboarding
+# SolNeutral V7.6 — SOL Testnet Reserve
 
-Cumulative upgrade based directly on V7.5.3. Project source remains at the ZIP archive root for extraction into the **existing** `solneutral-vault` repository, preserving `.git` and history.
+This cumulative release is built on the existing SolNeutral repository. Archive contents begin at repository root and intentionally contain no `.git` folder. Vercel Root Directory remains `frontend`.
 
-## Changes
+## Active experience
 
-- **Real receiving-account setup:** optional, wallet-signed, devnet-only creation of the canonical associated SPL token account for the *on-chain verified* Drift Spot Market 0 quote mint. Mint mismatch and program ownership checks occur before signing. Confirmation is followed by an independently validated owner/mint account read, with bounded RPC retries.
-- **Receive-first flow:** copy the connected wallet address, exact market mint and token-account address. A clear step sequence guides Receive → Deposit → Trade/Withdraw, including an automatic read-only initial collateral check and a manual refresh after external funding.
-- **Prevent predictable failures:** Deposit is disabled when the wallet does not hold enough matching quote tokens, and Withdraw is disabled when verified deposited balance or destination account is insufficient. No misleading on-chain action or error is attempted for known zero-balance states.
-- **Preserve working features:** existing USDC/wSOL market checks, account setup, ledger reconciliation, orders, SOL/USD historical chart, dashboard, SolNeutral AI, mineral-green styling, and devnet-only network guards.
-- **Clarify source and limitations:** owning SOL/wSOL does not create test USDC. The known on-chain market mint is not Circle's standard devnet USDC mint. SolNeutral does not mint arbitrary test USDC and no publicly compatible faucet has been verified.
+- **Solana testnet only:** the wallet connection uses `NEXT_PUBLIC_TESTNET_RPC_URL` or `https://api.testnet.solana.com`. Read and signed operations verify the Solana testnet genesis hash; devnet SOL is not usable on testnet.
+- **Self-custodied SOL reserve:** Trade Lab offers wallet-signed transfers of native testnet SOL into a wrapped-SOL associated token account (ATA) owned by the connected wallet, plus an all-balance unwrapping/close operation. This is *not* a protocol vault deposit, investment, staking, or yield-bearing strategy.
+- **On-chain evidence:** reserves and native SOL balances are separately observed from Solana RPC, with signature links to the testnet explorer. A confirmed signature is not described as a verified reserve change until a subsequent balance read matches.
+- **Clearer UI:** brand and dashboard identify SolNeutral and SOL Testnet; workspace metrics show wallet SOL, reserve wSOL, wallet ownership, and testnet history. Existing mineral-green UI, persistent navigation, chart, research scenarios, and SolNeutral AI remain.
+- **No Drift/USDC dependency in the active SOL flow.** The prior Drift integration and historical developer materials are preserved as legacy code, not used for the current transaction actions.
 
-## Verification boundaries
+## Known limitations / verification
 
-67 TypeScript/TSX files parsed without syntax errors. npm registry is unreachable from this environment; `npm ci`, full app typecheck, `next build`, real wallet signature, external mint funding and Drift token movements **are not independently verified**. A successful wallet token-account creation is not equivalent to obtaining USDC or depositing to Drift. Run `npm ci && npm run typecheck && npm run build` inside `frontend` before submission and verify all signed transactions on Solana Explorer devnet.
+- A wrapped-SOL ATA remains controlled by the user. The word "deposit" means **wrap native SOL into the user's own token account**, not send funds to a SolNeutral smart contract.
+- The withdrawal action closes the **entire** wrapped SOL ATA and returns the contained native SOL and reclaimable rent to the connected wallet. It does not support partial withdrawals; it is inappropriate if a user wishes to retain wSOL in that same ATA.
+- Testnet faucet availability is not guaranteed. Public Solana testnet RPCs may be rate limited and testnet can reset or be unstable.
+- No production build, browser wallet signing, testnet airdrop or actual testnet deposit/withdrawal was independently completed in this environment. Deploy and verify before presenting these actions as live.
+- The AI route still needs a Vercel-hosted `ANTHROPIC_API_KEY` and public-route rate limiting; users should never enter secrets.
 
-Vercel Root Directory: `frontend`. Keep `ANTHROPIC_API_KEY` server-only, and keep devnet RPC access in `NEXT_PUBLIC_DEVNET_RPC_URL`. Do not switch to testnet based on cluster naming alone.
+## Deployment
+
+Place `SolNeutral_V7_6_SOL_Testnet_Reserve.zip` on your Desktop, then run the single extraction-and-push block in `START_HERE.md`. Set `NEXT_PUBLIC_TESTNET_RPC_URL=https://api.testnet.solana.com` in Vercel if a custom RPC is not provided. Remove any stale expectations that `NEXT_PUBLIC_DEVNET_RPC_URL` configures wallet actions. Follow up with a Vercel build and a *small* signed testnet SOL reserve cycle.

@@ -19,7 +19,7 @@ export function Brand({ footer = false }: { footer?: boolean }) {
   return (
     <Link href={footer ? '/' : inApp ? '/dashboard' : '/'} className={`brand ${footer ? "brand-footer" : ""}`} aria-label={inApp && !footer ? "SolNeutral dashboard" : "SolNeutral home"}>
       <BrandMark size={40} />
-      <span className="brand-word">SOL<span>NEUTRAL</span></span>
+      <span className="brand-word">SOL<span>NEUTRAL</span><small className="sn-brand-network">SOL TESTNET</small></span>
     </Link>
   );
 }

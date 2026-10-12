@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DEVNET_GENESIS_HASH } from '@/lib/devnet-execution';
+import { TESTNET_GENESIS_HASH } from '@/lib/testnet-sol';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAINNET_GENESIS_HASH = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
-const DEVNET_FALLBACK = 'https://api.devnet.solana.com';
+const TESTNET_FALLBACK = 'https://api.testnet.solana.com';
 const MAINNET_FALLBACK = 'https://api.mainnet-beta.solana.com';
 
 type ProbeState = 'not_checked' | 'verified' | 'unavailable' | 'wrong_network';
@@ -36,30 +36,30 @@ export async function GET(request: NextRequest) {
     process.env.ANTHROPIC_API_KEY &&
     process.env.ANTHROPIC_MODEL
   );
-  const [devnet, mainnet] = probe ? await Promise.all([
-    probeRpc(process.env.NEXT_PUBLIC_DEVNET_RPC_URL || DEVNET_FALLBACK, DEVNET_GENESIS_HASH),
+  const [testnet, mainnet] = probe ? await Promise.all([
+    probeRpc(process.env.NEXT_PUBLIC_TESTNET_RPC_URL || TESTNET_FALLBACK, TESTNET_GENESIS_HASH),
     probeRpc(process.env.SOLANA_RPC_URL || MAINNET_FALLBACK, MAINNET_GENESIS_HASH),
   ]) : ['not_checked', 'not_checked'] as const;
 
   return NextResponse.json({
     project: 'SolNeutral',
-    release: '7.5-assisted-collateral-and-solneutral-ai',
+    release: '7.6-testnet-sol-reserve',
     backend: 'online',
     environment: process.env.VERCEL_ENV || 'local',
     verifiedAt: new Date().toISOString(),
     execution: {
-      cluster: 'devnet-only',
-      devnetEnabled: process.env.NEXT_PUBLIC_ENABLE_DEVNET_TRADING !== 'false',
+      cluster: 'testnet-only',
+      personalWalletWsolReserveEnabled: true,
       pooledVaultDepositsEnabled: false,
     },
     services: {
       nextApi: { state: 'online', detail: 'Next.js API routes are serving requests.' },
-      devnetRpc: { state: devnet, configured: Boolean(process.env.NEXT_PUBLIC_DEVNET_RPC_URL) },
-      mainnetResearchRpc: { state: mainnet, configured: Boolean(process.env.SOLANA_RPC_URL), note: 'Read-only research, separate from devnet trading.' },
+      testnetRpc: { state: testnet, configured: Boolean(process.env.NEXT_PUBLIC_TESTNET_RPC_URL) },
+      mainnetResearchRpc: { state: mainnet, configured: Boolean(process.env.SOLANA_RPC_URL), note: 'Read-only research, separate from testnet wallet actions.' },
       aiNarration: { state: configuredAi ? 'configured' : 'optional_not_configured' },
-      fundingData: { state: 'external', endpoint: '/api/market/funding' },
-      solReferenceChart: { state: 'external', endpoint: '/api/market/sol-chart?interval=5m', venue: 'Coinbase SOL/USD spot, separate from Drift perp' },
+      legacyFundingResearch: { state: 'historical-reference-only', endpoint: '/api/market/funding' },
+      solReferenceChart: { state: 'external', endpoint: '/api/market/sol-chart?interval=5m', venue: 'Coinbase SOL/USD spot, separate from wallet reserve' },
     },
-    note: 'A healthy web API does not prove that a Drift account exists or that the external funding indexer is available.',
+    note: 'A healthy API is not proof of a signed testnet deposit, withdrawal, or balance change.',
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

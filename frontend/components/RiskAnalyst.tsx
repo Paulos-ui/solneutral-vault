@@ -6,15 +6,15 @@ import { DEFAULT_EVIDENCE, type FundingEvidence } from '@/lib/intelligence';
 import { buildResearchBrief } from '@/lib/analyst';
 
 const prompts = [
-  'How can I deposit collateral?',
+  'How do I deposit test SOL?',
   'What happens if SOL falls 30%?',
   'What is a delta-neutral hedge?',
-  'Can you explain my trading risks?',
+  'How do I withdraw my SOL?',
 ];
 
 export function RiskAnalyst() {
   const [question, setQuestion] = useState('');
-  const [funding, setFunding] = useState<FundingEvidence>(DEFAULT_EVIDENCE);
+  const funding: FundingEvidence = DEFAULT_EVIDENCE;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -22,17 +22,6 @@ export function RiskAnalyst() {
   const bottom = useRef<HTMLDivElement | null>(null);
   const snapshot = { assumptions: POSITION_RISK_DEFAULT, funding };
 
-  useEffect(() => {
-    const abort = new AbortController();
-    fetch('/api/market/funding', { cache: 'no-store', signal: abort.signal })
-      .then(res => res.json())
-      .then(p => {
-        if (!abort.signal.aborted && (p?.status === 'observed' || p?.status === 'stale') && typeof p.latest?.hourlyPct === 'number') {
-          setFunding({status:p.status, hourlyPct:p.latest.hourlyPct, ageMinutes:p.ageMinutes ?? null, source:p.source ?? null});
-        }
-      }).catch(() => {});
-    return () => abort.abort();
-  }, []);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages, localExplanation]);
 
   async function send(text = question) {
@@ -75,7 +64,7 @@ export function RiskAnalyst() {
     <section className="sn-v6-chat-panel" aria-label="SolNeutral AI conversation">
       <div className="sn-v6-chat-head"><div className="sn-v6-chat-symbol">✳</div><div><strong>SolNeutral AI</strong><p>Your research companion · Ask naturally</p></div><span>READ ONLY</span></div>
       <div className="sn-v6-chat-body sn-ai-thread" aria-live="polite">
-        {messages.length === 0 && !localExplanation && <div className="sn-v6-chat-empty"><span aria-hidden="true">✳</span><h2>How can I help?</h2><p>Ask about deposits, Drift trading, hedging, or anything else. I can explain the product, but I cannot sign transactions or see private wallet data.</p></div>}
+        {messages.length === 0 && !localExplanation && <div className="sn-v6-chat-empty"><span aria-hidden="true">✳</span><h2>How can I help?</h2><p>Ask about SOL reserves, testnet wallet actions, hedging, or anything else. I can explain the product, but I cannot sign transactions or see private wallet data.</p></div>}
         {messages.map((message, index) => <div key={index} className={`sn-ai-message ${message.role === 'user' ? 'from-user' : 'from-agent'}`}><small>{message.role === 'user' ? 'YOU' : 'SOLNEUTRAL AI'}</small><p>{message.content}</p></div>)}
         {busy && <p className="sn-ai-thinking" role="status">SolNeutral AI is responding…</p>}
         {localExplanation && <div className="sn-ai-message from-agent"><small>OFFLINE SCENARIO · HYPOTHETICAL</small><p>{localExplanation}</p></div>}

@@ -7,7 +7,7 @@ const ORIGIN='https://api.exchange.coinbase.com';
 const SOURCE='Coinbase Exchange SOL/USD spot';
 const HEADER={'Cache-Control':'public, max-age=0, s-maxage=30, stale-while-revalidate=30'};
 
-/** Public and keyless reference chart. Separate from devnet Drift transactions. */
+/** Public and keyless reference chart. Independent from testnet wallet reserve actions. */
 export async function GET(request:NextRequest){
  const requested=request.nextUrl.searchParams.get('interval')??'5m';
  if(!validInterval(requested))return NextResponse.json({error:'Unsupported candle interval'},{status:400,headers:{'Cache-Control':'no-store'}});
@@ -21,10 +21,10 @@ export async function GET(request:NextRequest){
   const last=candles[candles.length-1];
   const earlier=candles.length>1?candles[candles.length-2]:last;
   const status=solCandleFresh(last,granularity)?'observed':'stale';
-  return NextResponse.json({status,instrument:'SOL/USD',venue:'Coinbase Exchange',marketType:'SPOT REFERENCE — NOT DRIFT PERP',interval:requested,source:url,
+  return NextResponse.json({status,instrument:'SOL/USD',venue:'Coinbase Exchange',marketType:'SPOT REFERENCE — NOT RESERVE VALUATION',interval:requested,source:url,
    asOf:new Date(last.time*1000).toISOString(),fetchedAt:new Date().toISOString(),price:last.close,changePct:earlier.close?((last.close-earlier.close)/earlier.close)*100:null,candles,
-   note:'Market-wide Coinbase SOL/USD spot candles, not Drift SOL-PERP mark/oracle, order fills, or wallet performance. Updates approximately every 30 seconds; provider data may lag. The latest bar may still be forming.'},{headers:HEADER});
+   note:'Market-wide Coinbase SOL/USD spot candles, not testnet trade execution, reserve yield, or wallet performance. Updates approximately every 30 seconds; provider data may lag. The latest bar may still be forming.'},{headers:HEADER});
  }catch{
-  return NextResponse.json({status:'unavailable',instrument:'SOL/USD',venue:'Coinbase Exchange',marketType:'SPOT REFERENCE — NOT DRIFT PERP',interval:requested,candles:[],fetchedAt:new Date().toISOString(),message:'Live reference candles could not be verified. No replacement or fabricated prices are displayed.'},{status:503,headers:{'Cache-Control':'no-store'}});
+  return NextResponse.json({status:'unavailable',instrument:'SOL/USD',venue:'Coinbase Exchange',marketType:'SPOT REFERENCE — NOT RESERVE VALUATION',interval:requested,candles:[],fetchedAt:new Date().toISOString(),message:'Live reference candles could not be verified. No replacement or fabricated prices are displayed.'},{status:503,headers:{'Cache-Control':'no-store'}});
  }
 }

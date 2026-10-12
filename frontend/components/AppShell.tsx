@@ -10,7 +10,7 @@ const appPaths = ['/dashboard','/terminal','/observatory','/trade','/analyst','/
 const destinations = [
   { href:'/dashboard', label:'Dashboard', icon:'home' },
   { href:'/observatory', label:'Observatory', icon:'pulse' },
-  { href:'/trade', label:'Trade Lab', icon:'diagonal' },
+  { href:'/trade', label:'SOL Reserve', icon:'diagonal' },
   { href:'/analyst', label:'AI Analyst', icon:'spark' },
   { href:'/history', label:'History', icon:'history' },
   { href:'/risk-lab', label:'Risk Lab', icon:'shield' },
@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Icon name={link.icon} size={19}/><span>{link.label}</span>
         </Link>)}
       </nav>
-      <span className="sn-rail-foot">SOLANA · DEVNET</span>
+      <span className="sn-rail-foot">SOLNEUTRAL · TESTNET</span>
     </aside>
     <main id="content" className="sn-app-content">{children}</main>
   </div>;

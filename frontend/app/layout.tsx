@@ -7,7 +7,7 @@ import { SolanaSessionProvider } from "@/components/SolanaSessionProvider";
 export const metadata: Metadata = {
   title: { default: "SolNeutral — The Hedge Observatory", template: "%s | SolNeutral" },
   description: "A risk-intelligent research interface for understanding delta-neutral strategies on Solana. Explore hedge exposure, funding assumptions, and modeled scenarios without yield promises.",
-  keywords: ["Solana", "Delta neutral", "Risk research", "Hedging", "Drift", "Funding rate", "Simulation"],
+  keywords: ["Solana", "Delta neutral", "Risk research", "Hedging", "Testnet SOL", "Wallet reserve", "Simulation"],
   openGraph: { title: "SolNeutral / The Hedge Observatory", description: "Look beyond the yield. See the risk.", type: "website" },
 };
 
