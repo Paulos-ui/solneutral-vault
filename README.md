@@ -1,6 +1,6 @@
-# SolNeutral V7.5.3 — Colosseum build hotfix
+# SolNeutral V7.5.4 — Receive-first collateral upgrade
 
-**Current delivery:** V7.5.3 fixes unsafe `unknown` Anchor spot-market mint typing in both collateral paths. Cumulative source retains SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
+**Current delivery:** V7.5.4 preserves V7.5.3 type safety and adds wallet-signed creation of the exact Drift quote-mint USDC receiving account, verified balances, copyable receive addresses, and deposit/withdraw controls that wait for real tokens. Cumulative source retains SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
 
 **Network:** Drift wallet-signed execution remains on Solana devnet. No compatible testnet markets or end-to-end signed collateral changes were verified. See [`docs/V7_5_PRODUCT_UPGRADE.md`](docs/V7_5_PRODUCT_UPGRADE.md), [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md), and [`START_HERE.md`](START_HERE.md).
 
@@ -16,9 +16,9 @@ SolNeutral is a wallet-first DeFi research and devnet execution workspace for un
 
 > **Status:** Research/development preview with wallet-signed **Drift devnet** execution. No production SolNeutral pooled vault, mainnet deployment or audited deposit service. This project is not endorsed by Colosseum or Superteam Nigeria.
 
-## Collateral diagnosis in V7.4
+## Collateral receive flow in V7.5.4
 
-Trade Lab → Collateral → USDC → **Check collateral** verifies the subscribed Drift spot market, mint account, wallet USDC ATA balance and on-chain Drift deposited amount before you attempt any deposit or withdrawal. It will explicitly show when the configured USDC mint is not present in your wallet. Do not assume generic devnet USDC faucet tokens have the same mint. A successful preflight does not prove signed transactions will succeed. Details: [`docs/V7_4_COLLATERAL_READINESS.md`](docs/V7_4_COLLATERAL_READINESS.md).
+Trade Lab → Collateral → USDC now automatically verifies the live Drift Spot Market 0 mint and balances. **Prepare receiving account** optionally creates your wallet-owned SPL token account with a signed devnet transaction. Copy the wallet, token account and exact mint; obtain matching-mint test collateral from a compatible source, refresh, then deposit. This does **not** mint or distribute USDC. Standard Circle devnet USDC is a different mint from the one presently observed on this Drift market. A successful preflight does not prove signed deposits or withdrawals will succeed. Details: [`docs/V7_4_COLLATERAL_READINESS.md`](docs/V7_4_COLLATERAL_READINESS.md).
 
 ## What makes SolNeutral useful
 

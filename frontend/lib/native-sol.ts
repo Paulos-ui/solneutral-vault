@@ -21,7 +21,7 @@ function wrappedAta(owner: PublicKey): PublicKey {
   return getAssociatedTokenAddressSync(NATIVE_MINT, owner);
 }
 
-async function signSendConfirm(connection: Connection, wallet: AnchorWallet, instructions: TransactionInstruction[]): Promise<string> {
+export async function signSendConfirm(connection: Connection, wallet: AnchorWallet, instructions: TransactionInstruction[]): Promise<string> {
   assertDevnetGenesis(await connection.getGenesisHash());
   const latest = await connection.getLatestBlockhash('confirmed');
   const transaction = new Transaction({feePayer:wallet.publicKey, recentBlockhash:latest.blockhash}).add(...instructions);

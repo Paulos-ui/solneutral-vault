@@ -1,27 +1,17 @@
-# SolNeutral V7.5.3 | Anchor spot-market type safety hotfix
+# SolNeutral V7.5.4 | Receive-first collateral onboarding
 
-This is a complete cumulative source ZIP based directly on V7.5.2, for extraction at the root of the **existing** `solneutral-vault` repository. The ZIP does not include `.git` and will not overwrite repository history.
+Cumulative upgrade based directly on V7.5.3. Project source remains at the ZIP archive root for extraction into the **existing** `solneutral-vault` repository, preserving `.git` and history.
 
-## Targeted fix from Vercel deployment
+## Changes
 
-- Fixed `frontend/lib/drift-devnet.ts` build error `market.mint is of type unknown` by validating and narrowing Anchor's `spotMarket.fetch()` account data into explicit `marketIndex`, `decimals`, and Solana `PublicKey` fields.
-- Applied the same decoding to **both** the wSOL market resolver (former line 90) and the USDC quote-market resolver (former line 134), so the error is not merely shifted to the second collateral path.
-- Preserved the previous Drift program ownership, canonical PDA, index and decimals checks before any collateral transaction. No permissive `any`, compiler-error suppression, or guesswork about the USDC mint was introduced.
-- No UI, network, dashboard, AI, order execution, or wallet-signing flow was changed by this hotfix.
+- **Real receiving-account setup:** optional, wallet-signed, devnet-only creation of the canonical associated SPL token account for the *on-chain verified* Drift Spot Market 0 quote mint. Mint mismatch and program ownership checks occur before signing. Confirmation is followed by an independently validated owner/mint account read, with bounded RPC retries.
+- **Receive-first flow:** copy the connected wallet address, exact market mint and token-account address. A clear step sequence guides Receive → Deposit → Trade/Withdraw, including an automatic read-only initial collateral check and a manual refresh after external funding.
+- **Prevent predictable failures:** Deposit is disabled when the wallet does not hold enough matching quote tokens, and Withdraw is disabled when verified deposited balance or destination account is insufficient. No misleading on-chain action or error is attempted for known zero-balance states.
+- **Preserve working features:** existing USDC/wSOL market checks, account setup, ledger reconciliation, orders, SOL/USD historical chart, dashboard, SolNeutral AI, mineral-green styling, and devnet-only network guards.
+- **Clarify source and limitations:** owning SOL/wSOL does not create test USDC. The known on-chain market mint is not Circle's standard devnet USDC mint. SolNeutral does not mint arbitrary test USDC and no publicly compatible faucet has been verified.
 
 ## Verification boundaries
 
-The npm registry was not reachable from this build environment. Therefore this delivery **cannot** claim `npm ci`, a full app typecheck, Vercel `next build`, or live Drift deposit/withdrawal verification. Validate those in the existing repository before pushing. A successful Vercel build likewise does not prove on-chain collateral movement; verify transaction signatures and account balances separately.
+67 TypeScript/TSX files parsed without syntax errors. npm registry is unreachable from this environment; `npm ci`, full app typecheck, `next build`, real wallet signature, external mint funding and Drift token movements **are not independently verified**. A successful wallet token-account creation is not equivalent to obtaining USDC or depositing to Drift. Run `npm ci && npm run typecheck && npm run build` inside `frontend` before submission and verify all signed transactions on Solana Explorer devnet.
 
-## Deployment
-
-Keep Vercel Root Directory as `frontend`. Keep Drift wallet-signed transactions on Solana devnet. Keep the `ANTHROPIC_API_KEY` private. No new environment variables are required for this typing fix.
-
-## Preserved V7.5.2 functionality
-
-- **Drift quote collateral:** Read the canonical Drift Spot Market 0 PDA directly from the deployed devnet program. Verify PDA ownership, decoded account index/mint, SPL mint owner and six-decimal precision. If the SDK subscription omits the existing market, load it explicitly. Derive the wallet token account from the verified *on-chain market mint* instead of relying solely on SDK config or guessing from faucet labels.
-- **Wrapped SOL:** Independently verify the standard SOL market (index 1) plus subscribed wSOL candidates by PDA ownership, on-chain mint, and nine-decimal precision. Dynamically subscribe if present. Check before wrapping or depositing; never assume the market exists. Existing wallet-owned wSOL can be unwrapped even without a valid Drift collateral market.
-- **Dashboard:** Separate Drift user-account verification from quote-market readiness. A quote-mint/RPC error no longer replaces a verified Drift account with an incorrect "Unavailable" status. Funding remains research-only; missing observations get calmer, accurate labels, never fabricated values.
-- **Error handling:** Do not mislabel Drift transaction rejections as user wallet denials. Clarified zero-token and collateral prerequisites. Replaced the ambiguous "Vault deposits not enabled" line with the real deposit destination, the wallet's personal Drift account.
-- Preserves V7.5.1 SolNeutral AI typing hotfix, server-held API key, dashboard design, chart, wallet and signed trade flows.
-
+Vercel Root Directory: `frontend`. Keep `ANTHROPIC_API_KEY` server-only, and keep devnet RPC access in `NEXT_PUBLIC_DEVNET_RPC_URL`. Do not switch to testnet based on cluster naming alone.

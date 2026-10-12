@@ -1,6 +1,6 @@
 {
   "name": "solneutral",
-  "version": "7.5.3-demo.0",
+  "version": "7.5.4-demo.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

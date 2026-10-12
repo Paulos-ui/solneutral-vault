@@ -15,7 +15,10 @@ test('USDC read-only preflight binds mint and owner before displaying balances',
 test('Trade Lab exposes a read-only readiness check and zero-asset blocker',()=>{
  const ui=readFileSync(new URL('../components/DriftTradingLab.tsx',import.meta.url),'utf8');
  assert.match(ui,/Check collateral ↻/);
- assert.match(ui,/0 of the exact quote token accepted by this market/);
+ assert.match(ui,/Receive Drift-compatible test USDC/);
+ assert.match(ui,/prepareDriftDevnetUsdcReceiveAccount/);
+ assert.match(ui,/walletTokenAccountExists/);
+ assert.match(ui,/Receive USDC before depositing/);
  assert.match(ui,/inspectDriftDevnetUsdcReadiness\(connection, signer\)/);
  assert.match(ui,/Deposited in Drift:/);
 });

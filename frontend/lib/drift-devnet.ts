@@ -5,7 +5,7 @@
  */
 import type { Connection } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
-import { prepareWrappedSolDeposit, ensureWrappedSolDestination, unwrapWalletWsol } from './native-sol';
+import { prepareWrappedSolDeposit, ensureWrappedSolDestination, unwrapWalletWsol, signSendConfirm } from './native-sol';
 import { validateQuoteSpotMarket, meaningfulDriftError } from './collateral-guards';
 import {
   assertDevnetGenesis, boundedLimitPrice,
@@ -227,6 +227,7 @@ export type DriftUsdcReadiness = {
   marketIndex: number;
   decimals: number;
   walletTokenAccount: string;
+  walletTokenAccountExists: boolean;
   walletAmount: string;
   driftDepositedAmount: string | null;
   userAccountExists: boolean;
@@ -272,6 +273,7 @@ export async function inspectDriftDevnetUsdcReadiness(
       marketIndex: spot.marketIndex,
       decimals: spot.decimals,
       walletTokenAccount: associated.toBase58(),
+      walletTokenAccountExists: Boolean(token),
       walletAmount: (token?.amount ?? 0n).toString(),
       driftDepositedAmount: deposited,
       userAccountExists: exists,
@@ -279,6 +281,59 @@ export async function inspectDriftDevnetUsdcReadiness(
   } finally {
     await client.unsubscribe().catch(() => undefined);
   }
+}
+
+/** Create ONLY the associated SPL token account for Drift's verified quote mint.
+ * This does not issue, mint, purchase, bridge, or deposit any USDC.
+ * A connected wallet approves the rent/fee and retains full ownership.
+ */
+export async function prepareDriftDevnetUsdcReceiveAccount(
+  connection: Connection,
+  wallet: AnchorWallet,
+  expectedMint: string,
+): Promise<{ tokenAccount: string; signature: string | null }> {
+  assertDevnetGenesis(await connection.getGenesisHash());
+  const { client } = await openDevnetClient(connection, wallet);
+  try {
+    const spot = await verifiedUsdcMarket(connection, client);
+    if (spot.mint.toBase58() !== expectedMint) {
+      throw new Error('Drift market mint changed. Recheck collateral before preparing a receiving account.');
+    }
+    const {
+      getAssociatedTokenAddressSync, getAccount, TOKEN_PROGRAM_ID,
+      createAssociatedTokenAccountIdempotentInstruction,
+    } = await import('@solana/spl-token');
+    const tokenAccount = getAssociatedTokenAddressSync(spot.mint, wallet.publicKey);
+    const existing = await connection.getAccountInfo(tokenAccount, 'confirmed');
+    if (existing) {
+      if (!existing.owner.equals(TOKEN_PROGRAM_ID)) throw new Error('Receiving token account has an unexpected program owner.');
+      const parsed = await getAccount(connection, tokenAccount, 'confirmed');
+      if (!parsed.owner.equals(wallet.publicKey) || !parsed.mint.equals(spot.mint)) {
+        throw new Error('Receiving token account does not belong to your wallet or Drift mint.');
+      }
+      return { tokenAccount: tokenAccount.toBase58(), signature: null };
+    }
+    const signature = await signSendConfirm(connection, wallet, [
+      createAssociatedTokenAccountIdempotentInstruction(
+        wallet.publicKey, tokenAccount, wallet.publicKey, spot.mint, TOKEN_PROGRAM_ID,
+      ),
+    ]);
+    // The confirming RPC may lag on a subsequent account read. Retry a few
+    // read-only checks before calling the result unverified (never resubmit).
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const info = await connection.getAccountInfo(tokenAccount, 'confirmed');
+      if (info) {
+        if (!info.owner.equals(TOKEN_PROGRAM_ID)) break;
+        const token = await getAccount(connection, tokenAccount, 'confirmed');
+        if (token.owner.equals(wallet.publicKey) && token.mint.equals(spot.mint)) {
+          return { tokenAccount: tokenAccount.toBase58(), signature };
+        }
+        break;
+      }
+      if (attempt < 3) await new Promise<void>(resolve => setTimeout(resolve, 450));
+    }
+    throw new Error(`Receiving-account transaction was confirmed but the token account is not yet verifiable. Inspect signature ${signature}; do not resubmit until checking Explorer.`);
+  } finally { await client.unsubscribe().catch(() => undefined); }
 }
 
 /** Read-only validation before presenting a native-SOL funding path.
