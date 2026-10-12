@@ -42,3 +42,15 @@ export function chooseDevnetUsdcMarket(markets: readonly SpotMarketLike[], confi
   if (!Number.isSafeInteger(market.marketIndex) || market.marketIndex < 0) throw new Error('Invalid Drift USDC market index.');
   return market;
 }
+
+/** Pure validation for the authoritative, decoded Spot Market 0 quote mint.
+ * This must not accept a different market index or arbitrary decimals, even
+ * if an RPC endpoint claims it is the devnet market.
+ */
+export function validateQuoteSpotMarket(market: {marketIndex:number;mint:string;decimals:number}): void {
+  if (market.marketIndex!==0) throw new Error('The on-chain Drift quote account is not spot market 0. No transaction was sent.');
+  if (market.decimals!==6) throw new Error('Drift devnet quote market is not a six-decimal token. USDC collateral is disabled.');
+  if (typeof market.mint!=='string'||market.mint.length<32||market.mint.length>44) {
+    throw new Error('The Drift quote mint is invalid. No collateral instruction was created.');
+  }
+}

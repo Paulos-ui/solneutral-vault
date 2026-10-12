@@ -1,24 +1,19 @@
-# SolNeutral V7.5 | Colosseum usability upgrade
+# SolNeutral V7.5.2 | Drift collateral and dashboard correction
 
-Cumulative project rooted at repository root. Preserve your existing `.git` directory.
+Cumulative source ZIP. Extract at the root of the existing `solneutral-vault` repository. `.git` stays untouched.
 
-## Source changes
+## Focused changes
 
-- SolNeutral AI is now a visitor-facing multi-turn assistant. Removed the manual AI demo-access token from the UI and API. The Anthropic key stays on the server (Vercel).
-- Added basic instance-local request caps, reduced model output length, input checks, no-store responses, and same-origin browser checks. **Configure an actual Vercel WAF rate-limit rule** before letting public traffic reach the AI API; in-memory limits are not global across serverless instances.
-- Dashboard now checks the connected Drift devnet account and exact test-USDC wallet/spot balance, rather than advertising unverified health or an unsynced card. Funding remains optional research data and is never invented.
-- New assisted funding path helps users with wallet SOL check the actual deployed wSOL collateral market before signing, with explicit recovery advice if wrapping succeeds but a later Drift deposit fails.
-- Backend diagnostics are no longer shown in Settings. The internal Next.js API endpoints remain necessary for secure model requests and public data fetching.
-- Retained candlestick chart, Trade Lab, navigation, wallet adapters, risks and market model, documentation and previous hotfix.
+- **Drift quote collateral:** Read the canonical Drift Spot Market 0 PDA directly from the deployed devnet program. Verify PDA ownership, decoded account index/mint, SPL mint owner and six-decimal precision. If the SDK subscription omits the existing market, load it explicitly. Derive the wallet token account from the verified *on-chain market mint* instead of relying solely on SDK config or guessing from faucet labels.
+- **Wrapped SOL:** Independently verify the standard SOL market (index 1) plus subscribed wSOL candidates by PDA ownership, on-chain mint, and nine-decimal precision. Dynamically subscribe if present. Check before wrapping or depositing; never assume the market exists. Existing wallet-owned wSOL can be unwrapped even without a valid Drift collateral market.
+- **Dashboard:** Separate Drift user-account verification from quote-market readiness. A quote-mint/RPC error no longer replaces a verified Drift account with an incorrect "Unavailable" status. Funding remains research-only; missing observations get calmer, accurate labels, never fabricated values.
+- **Error handling:** Do not mislabel Drift transaction rejections as user wallet denials. Clarified zero-token and collateral prerequisites. Replaced the ambiguous "Vault deposits not enabled" line with the real deposit destination, the wallet's personal Drift account.
+- Preserves V7.5.1 SolNeutral AI typing hotfix, server-held API key, dashboard design, chart, wallet and signed trade flows.
 
-## Verification limits
+## What is *not* claimed
 
-No wallet transactions were signed in this environment. No deposit, withdrawal, order fill, or margin calculation is claimed verified on-chain. No full `npm run typecheck` or `npm run build` was executed for V7.5 because npm dependencies are not installed in this environment. The user requested no automated test run. Modified TS/TSX modules were syntax-transpiled only.
+The newly implemented checks have not been executed against a live devnet RPC in this sandbox and no wallet signed anything. Source parsing alone is **not** equivalent to `npm run typecheck`, `npm run build`, or verified on-chain transactions. There is currently no claim of a successful USDC/wSOL deposit, withdrawal or order fill. A wallet with zero matching market-0 test USDC cannot deposit USDC, even if it has native SOL.
 
-### Deployment
+## Deployment
 
-Keep the Vercel Root Directory `frontend`; configure `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in Vercel only (no browser prefixes). Do **not** configure or ask visitors for `AI_DEMO_ACCESS_TOKEN`. Rate-limit POST `/api/ai/interpret` using Vercel WAF before opening unrestricted AI access. Keep the Solana RPC on **devnet**; no compatible Drift testnet deployment has been confirmed.
-
-### Collateral
-
-Native wallet SOL alone is not Drift margin. Use Trade Lab → Collateral → wSOL → Check SOL market. Only a verified wSOL market allows the two-step wrap/deposit flow. Otherwise use the exact test USDC mint shown by the verified spot market. After wallet confirmations, verify both wallet and Drift account changes; neither action is demonstrated by this source release.
+Vercel Root Directory: `frontend`. Keep the devnet RPC and its genesis check. Anthropic environment variables stay private; the SolNeutral AI endpoint requires a real edge/WAF rate limit before broad public usage. Do not deploy a separate Solidity vault for wallet-owned Drift collateral.

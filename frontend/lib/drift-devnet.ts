@@ -6,9 +6,9 @@
 import type { Connection } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
 import { prepareWrappedSolDeposit, ensureWrappedSolDestination, unwrapWalletWsol } from './native-sol';
-import { chooseWrappedSolMarket, chooseDevnetUsdcMarket, meaningfulDriftError } from './collateral-guards';
+import { validateQuoteSpotMarket, meaningfulDriftError } from './collateral-guards';
 import {
-  assertDevnetGenesis, boundedLimitPrice, DEVNET_GENESIS_HASH,
+  assertDevnetGenesis, boundedLimitPrice,
   validateDevnetAmount, decimalToUnits,
 } from './devnet-execution';
 
@@ -63,59 +63,115 @@ async function waitForVerifiedSignature(connection: Connection, signature: strin
   return Boolean(status && !status.err && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized'));
 }
 
-/** Verify on-chain wSOL market existence, ownership and mint before wallet funds move. */
+/** Verify an actual Drift devnet wSOL spot market before funds move.
+ * The SDK can omit a market from its subscribed preset even when the PDA
+ * exists, so inspect the on-chain canonical SOL market (#1) as a fallback.
+ * Never infer support merely because the wallet holds wSOL.
+ */
 async function verifiedWrappedSolMarket(connection: Connection, client: Awaited<ReturnType<typeof openDevnetClient>>['client']) {
   const { NATIVE_MINT } = await import('@solana/spl-token');
   const { getSpotMarketPublicKeySync } = await import('@drift-labs/sdk');
-  const markets = client.getSpotMarketAccounts();
-  const market = chooseWrappedSolMarket(markets);
-  // SDK subscription market types expose toBase58(), but do not guarantee the
-  // concrete PublicKey.equals() method. Compare their canonical mint addresses.
-  if (market.mint.toBase58() !== NATIVE_MINT.toBase58()) {
-    throw new Error('The selected collateral market is not native wrapped SOL.');
+  const subscribedCandidates = client.getSpotMarketAccounts()
+    .filter(m => m.mint.toBase58() === NATIVE_MINT.toBase58())
+    .map(m => m.marketIndex);
+  const candidateIndices = [...new Set([1, ...subscribedCandidates])];
+  const matches: number[] = [];
+  for (const index of candidateIndices) {
+    const marketPda = getSpotMarketPublicKeySync(client.program.programId, index);
+    const chainAccount = await connection.getAccountInfo(marketPda, 'confirmed');
+    if (!chainAccount) continue;
+    if (!chainAccount.owner.equals(client.program.programId)) {
+      throw new Error('Drift wSOL candidate is not owned by the configured devnet program. No funds moved.');
+    }
+    const market = await client.program.account.spotMarket.fetch(marketPda);
+    if (market.marketIndex !== index) {
+      throw new Error('Drift wSOL spot market index does not match its derived PDA. No funds moved.');
+    }
+    if (market.mint.toBase58() === NATIVE_MINT.toBase58()) {
+      if (market.decimals !== 9) throw new Error('Drift wSOL market precision disagrees with native wSOL. No funds moved.');
+      matches.push(index);
+    }
   }
-  // Resolve the authoritative spot-market PDA from the program and market index.
-  // Do not rely on an SDK market object's optional/shape-only pubkey property.
-  const spotMarketPda = getSpotMarketPublicKeySync(client.program.programId, market.marketIndex);
-  const account = await connection.getAccountInfo(spotMarketPda, 'confirmed');
-  if (!account || !account.owner.equals(client.program.programId)) {
-    throw new Error('Drift wSOL spot market is missing or owned by a different program on devnet. Deposit and withdrawal disabled.');
+  if (matches.length !== 1) {
+    throw new Error(matches.length === 0
+      ? 'This Drift devnet program has no verified wSOL collateral market at the subscribed or standard SOL index. No SOL was wrapped or deposited. You can unwrap the existing wallet wSOL.'
+      : 'Multiple verified wSOL spot markets were found; deposits are disabled rather than guessing.');
   }
-  return market.marketIndex;
+  const index = matches[0];
+  if (!client.getSpotMarketAccount(index)) {
+    const added = await client.accountSubscriber.addSpotMarket(index);
+    if (added) await client.accountSubscriber.fetch();
+    if (!added || !client.getSpotMarketAccount(index)) {
+      throw new Error('Drift wSOL market exists, but the SDK could not load it. Retry with a healthy devnet RPC before signing.');
+    }
+  }
+  if (client.getSpotMarketAccount(index)?.mint.toBase58() !== NATIVE_MINT.toBase58()) {
+    throw new Error('Subscribed wSOL market mint disagrees with the verified on-chain mint. Deposits disabled.');
+  }
+  return index;
 }
 
-/** Find actual market + mint before considering any wallet token movement. */
-async function verifiedUsdcMarket(connection: Connection, client: Awaited<ReturnType<typeof openDevnetClient>>['client'], expectedMint: string) {
+/** Resolve the canonical Drift quote market from the deployed program, not from
+ * the subset of markets loaded by the SDK subscription or a stale SDK mint.
+ * Every caller must independently confirm PDA ownership, index, mint and decimals.
+ * Nothing in this function signs a transaction.
+ */
+async function verifiedUsdcMarket(
+  connection: Connection,
+  client: Awaited<ReturnType<typeof openDevnetClient>>['client'],
+) {
   const { getSpotMarketPublicKeySync } = await import('@drift-labs/sdk');
-  const { PublicKey } = await import('@solana/web3.js');
-  const market = chooseDevnetUsdcMarket(client.getSpotMarketAccounts(), expectedMint);
-  const marketPda = getSpotMarketPublicKeySync(client.program.programId, market.marketIndex);
-  const chainMarket = await connection.getAccountInfo(marketPda, 'confirmed');
-  if (!chainMarket || !chainMarket.owner.equals(client.program.programId)) throw new Error('Drift devnet USDC market is not available on-chain. No deposit or withdrawal was sent.');
-  const mintPubkey = new PublicKey(expectedMint);
   const { TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
-  const mintInfo = await connection.getParsedAccountInfo(mintPubkey, 'confirmed');
-  if (!mintInfo.value || !mintInfo.value.owner.equals(TOKEN_PROGRAM_ID) || !('parsed' in mintInfo.value.data) || mintInfo.value.data.parsed?.type !== 'mint') throw new Error('USDC test-token mint is missing or is not owned by the SPL Token program on this devnet RPC.');
-  const decimals = Number(mintInfo.value.data.parsed.info.decimals);
-  if (decimals !== 6) throw new Error('Unexpected devnet quote-token decimals; USDC actions are disabled.');
-  return { marketIndex: market.marketIndex, mint: mintPubkey, decimals };
+  const index = 0; // Drift's canonical quote spot market.
+  const pda = getSpotMarketPublicKeySync(client.program.programId, index);
+  const chainAccount = await connection.getAccountInfo(pda, 'confirmed');
+  if (!chainAccount || !chainAccount.owner.equals(client.program.programId)) {
+    throw new Error('The Drift quote spot market (index 0) could not be verified on this devnet RPC. No collateral transaction was sent.');
+  }
+  // Decode the *same on-chain PDA* with Drift's IDL. A subscribed market list
+  // may be empty/incomplete without the market actually being absent.
+  const market = await client.program.account.spotMarket.fetch(pda);
+  const mintAddress = market.mint.toBase58();
+  validateQuoteSpotMarket({marketIndex:market.marketIndex, mint:mintAddress, decimals:market.decimals});
+
+  const mint = market.mint;
+  const mintInfo = await connection.getParsedAccountInfo(mint, 'confirmed');
+  if (!mintInfo.value || !mintInfo.value.owner.equals(TOKEN_PROGRAM_ID) ||
+      !('parsed' in mintInfo.value.data) || mintInfo.value.data.parsed?.type !== 'mint') {
+    throw new Error(`Drift quote market #0 points to a mint (${mintAddress}) that is not a verified SPL Token mint. No transfer was sent.`);
+  }
+  if (Number(mintInfo.value.data.parsed.info.decimals) !== market.decimals) {
+    throw new Error('Drift quote market decimals disagree with the token mint. Transfers are disabled.');
+  }
+  // Market 0 must be subscribed when composing Drift deposit/withdraw
+  // instructions. Dynamic subscription avoids missing markets in SDK presets.
+  if (!client.getSpotMarketAccount(index)) {
+    const added = await client.accountSubscriber.addSpotMarket(index);
+    if (added) await client.accountSubscriber.fetch();
+    if (!added || !client.getSpotMarketAccount(index)) {
+      throw new Error('Drift quote market exists on-chain but the SDK could not load it. Retry using a healthy devnet RPC. No transfer was sent.');
+    }
+  }
+  if (client.getSpotMarketAccount(index)?.mint.toBase58() !== mintAddress) {
+    throw new Error('The subscribed Drift market and on-chain quote mint disagree. Transfers are disabled.');
+  }
+  return {marketIndex:index, mint, decimals:market.decimals};
 }
 
 /** Read wallet-owned devnet USDC. This is NOT Drift-deposited collateral. */
 export async function inspectDriftDevnetUsdc(connection: Connection, wallet: AnchorWallet) {
-  assertDevnetGenesis(await connection.getGenesisHash());
-  const sdk = await import('@drift-labs/sdk');
-  const { PublicKey } = await import('@solana/web3.js');
-  const { getAssociatedTokenAddressSync, getAccount, TOKEN_PROGRAM_ID } = await import('@solana/spl-token');
-  const config = sdk.initialize({ env: 'devnet' });
-  const mint = new PublicKey(config.USDC_MINT_ADDRESS);
-  const address = getAssociatedTokenAddressSync(mint, wallet.publicKey);
-  const tokenInfo = await connection.getAccountInfo(address, 'confirmed');
-  if (!tokenInfo) return { mint:mint.toBase58(), amount:0n };
-  if (!tokenInfo.owner.equals(TOKEN_PROGRAM_ID)) throw new Error('Wallet USDC token account uses an unsupported token program.');
-  const token = await getAccount(connection, address, 'confirmed');
-  if (!token.mint.equals(mint) || !token.owner.equals(wallet.publicKey)) throw new Error('Wallet USDC account mint/authority mismatch.');
-  return { mint:mint.toBase58(), amount:token.amount };
+  const {client}=await openDevnetClient(connection,wallet);
+  try {
+    const spot=await verifiedUsdcMarket(connection,client);
+    const {getAssociatedTokenAddressSync,getAccount,TOKEN_PROGRAM_ID}=await import('@solana/spl-token');
+    const address=getAssociatedTokenAddressSync(spot.mint,wallet.publicKey);
+    const tokenInfo=await connection.getAccountInfo(address,'confirmed');
+    if (!tokenInfo) return {mint:spot.mint.toBase58(),amount:0n};
+    if (!tokenInfo.owner.equals(TOKEN_PROGRAM_ID)) throw new Error('Wallet quote token account has the wrong token program.');
+    const token=await getAccount(connection,address,'confirmed');
+    if (!token.mint.equals(spot.mint)||!token.owner.equals(wallet.publicKey)) throw new Error('Wallet quote token account does not match the verified Drift market mint.');
+    return {mint:spot.mint.toBase58(),amount:token.amount};
+  } finally {await client.unsubscribe().catch(()=>undefined);}
 }
 
 /** Explicit, read-only readiness check for the exact Drift devnet quote asset.
@@ -138,7 +194,7 @@ export async function inspectDriftDevnetUsdcReadiness(
 ): Promise<DriftUsdcReadiness> {
   const { client, sdk, config } = await openDevnetClient(connection, wallet);
   try {
-    const spot = await verifiedUsdcMarket(connection, client, config.USDC_MINT_ADDRESS);
+    const spot = await verifiedUsdcMarket(connection, client);
     const { getAssociatedTokenAddressSync, getAccount } = await import('@solana/spl-token');
     const { PublicKey } = await import('@solana/web3.js');
     const associated = getAssociatedTokenAddressSync(spot.mint, wallet.publicKey);
@@ -238,7 +294,7 @@ export async function executeDriftDevnetAction(
     // collateral when the selected spot market does not exist on Drift devnet.
     const spot = action === 'deposit' || action === 'withdraw'
       ? (collateralAsset === 'usdc'
-        ? await verifiedUsdcMarket(connection, client, config.USDC_MINT_ADDRESS)
+        ? await verifiedUsdcMarket(connection, client)
         : { marketIndex: await verifiedWrappedSolMarket(connection, client), mint: null, decimals: 9 }) : null;
     const spotIndex = spot?.marketIndex ?? null;
     // Resolve the actual subscribed SOL perpetual market rather than assuming

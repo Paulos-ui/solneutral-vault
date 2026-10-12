@@ -33,8 +33,8 @@ test('market validation happens before wrapping and withdraw checks balance',()=
 });
 test('SDK mint address is compared safely and the market PDA is derived by index',()=>{
  const adapter=readFileSync(new URL('../lib/drift-devnet.ts',import.meta.url),'utf8');
- assert.match(adapter,/market\.mint\.toBase58\(\) !== NATIVE_MINT\.toBase58\(\)/);
- assert.match(adapter,/getSpotMarketPublicKeySync\(client\.program\.programId, market\.marketIndex\)/);
+ assert.match(adapter,/market\.mint\.toBase58\(\) === NATIVE_MINT\.toBase58\(\)/);
+ assert.match(adapter,/getSpotMarketPublicKeySync\(client\.program\.programId, index\)/);
  assert.doesNotMatch(adapter,/market\.mint\.equals\(/);
  assert.doesNotMatch(adapter,/getAccountInfo\(market\.pubkey/);
 });
@@ -51,7 +51,7 @@ test('devnet USDC collateral only selects the configured mint',()=>{
 });
 test('quote collateral validates before calling wallet wrap code',()=>{
  const adapter=readFileSync(new URL('../lib/drift-devnet.ts',import.meta.url),'utf8');
- assert.match(adapter,/verifiedUsdcMarket\(connection, client, config.USDC_MINT_ADDRESS\)/);
+ assert.match(adapter,/verifiedUsdcMarket\(connection, client\)/);
  assert.match(adapter,/token.amount < units!/);
  assert.match(adapter,/collateralAsset === 'usdc'/);
 });
