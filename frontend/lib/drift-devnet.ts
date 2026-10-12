@@ -16,6 +16,44 @@ export type ExecutionAction = 'initialize' | 'deposit' | 'withdraw' | 'long' | '
 export type CollateralAsset = 'usdc' | 'wsol';
 export type ExecutionResult = { signature: string; confirmed: boolean; description: string; userAccount: string };
 
+/**
+ * Anchor's untyped program.account.spotMarket.fetch() can expose decoded IDL
+ * fields as `unknown`. Narrow every chain-sourced identity field at runtime
+ * before making PublicKey calls or selecting a collateral market. This also
+ * protects fund movements if an RPC returns an unexpected account shape.
+ */
+function decodeOnChainSpotMarket(
+  raw: unknown,
+  PublicKeyCtor: typeof import('@solana/web3.js').PublicKey,
+): { marketIndex: number; decimals: number; mint: import('@solana/web3.js').PublicKey } {
+  if (raw === null || typeof raw !== 'object') {
+    throw new Error('Drift spot market account could not be decoded. No funds moved.');
+  }
+  const decoded = raw as Record<string, unknown>;
+  const marketIndex = decoded.marketIndex;
+  const decimals = decoded.decimals;
+  const rawMint = decoded.mint;
+  if (typeof marketIndex !== 'number' || !Number.isSafeInteger(marketIndex) || marketIndex < 0 ||
+      typeof decimals !== 'number' || !Number.isSafeInteger(decimals) || decimals < 0 || decimals > 18) {
+    throw new Error('Drift spot market index or decimals are invalid. No funds moved.');
+  }
+  if (rawMint === null || typeof rawMint !== 'object' ||
+      !('toBase58' in rawMint) || typeof rawMint.toBase58 !== 'function') {
+    throw new Error('Drift spot market mint is not a valid public key. No funds moved.');
+  }
+  const mintAddress: unknown = rawMint.toBase58();
+  if (typeof mintAddress !== 'string') {
+    throw new Error('Drift spot market mint address is invalid. No funds moved.');
+  }
+  let mint: import('@solana/web3.js').PublicKey;
+  try {
+    mint = new PublicKeyCtor(mintAddress);
+  } catch {
+    throw new Error('Drift spot market mint is not a valid Solana address. No funds moved.');
+  }
+  return { marketIndex, decimals, mint };
+}
+
 async function openDevnetClient(connection: Connection, wallet: AnchorWallet) {
   const genesis = await connection.getGenesisHash();
   assertDevnetGenesis(genesis);
@@ -83,7 +121,10 @@ async function verifiedWrappedSolMarket(connection: Connection, client: Awaited<
     if (!chainAccount.owner.equals(client.program.programId)) {
       throw new Error('Drift wSOL candidate is not owned by the configured devnet program. No funds moved.');
     }
-    const market = await client.program.account.spotMarket.fetch(marketPda);
+    const { PublicKey } = await import('@solana/web3.js');
+    const market = decodeOnChainSpotMarket(
+      await client.program.account.spotMarket.fetch(marketPda), PublicKey,
+    );
     if (market.marketIndex !== index) {
       throw new Error('Drift wSOL spot market index does not match its derived PDA. No funds moved.');
     }
@@ -130,7 +171,10 @@ async function verifiedUsdcMarket(
   }
   // Decode the *same on-chain PDA* with Drift's IDL. A subscribed market list
   // may be empty/incomplete without the market actually being absent.
-  const market = await client.program.account.spotMarket.fetch(pda);
+  const { PublicKey } = await import('@solana/web3.js');
+  const market = decodeOnChainSpotMarket(
+    await client.program.account.spotMarket.fetch(pda), PublicKey,
+  );
   const mintAddress = market.mint.toBase58();
   validateQuoteSpotMarket({marketIndex:market.marketIndex, mint:mintAddress, decimals:market.decimals});
 

@@ -1,6 +1,6 @@
-# SolNeutral V7.5 — Colosseum upgrade
+# SolNeutral V7.5.3 — Colosseum build hotfix
 
-**Current delivery:** cumulative source with SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
+**Current delivery:** V7.5.3 fixes unsafe `unknown` Anchor spot-market mint typing in both collateral paths. Cumulative source retains SOL collateral market preflight, dashboard account/USDC visibility, plain-language SolNeutral AI conversation, and a simplified Settings page. The frontend uses its own Vercel API routes; no separate Railway backend or end-user AI token is needed. Vercel server secrets and WAF rate limiting are still required for public AI access.
 
 **Network:** Drift wallet-signed execution remains on Solana devnet. No compatible testnet markets or end-to-end signed collateral changes were verified. See [`docs/V7_5_PRODUCT_UPGRADE.md`](docs/V7_5_PRODUCT_UPGRADE.md), [`RELEASE_MANIFEST.md`](RELEASE_MANIFEST.md), and [`START_HERE.md`](START_HERE.md).
 
