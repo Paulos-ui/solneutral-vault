@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export function GET() {
   return NextResponse.json({
     project: 'SolNeutral',
-    version: '7.6.0-testnet',
+    version: '7.6.1-testnet-demo-trade',
     backend: 'nextjs-vercel-functions',
     mode: 'solana-testnet-wallet-reserve-and-research',
     walletConnectionAvailable: true,

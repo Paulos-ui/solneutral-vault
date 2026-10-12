@@ -10,7 +10,7 @@ const appPaths = ['/dashboard','/terminal','/observatory','/trade','/analyst','/
 const destinations = [
   { href:'/dashboard', label:'Dashboard', icon:'home' },
   { href:'/observatory', label:'Observatory', icon:'pulse' },
-  { href:'/trade', label:'SOL Reserve', icon:'diagonal' },
+  { href:'/trade', label:'Trade Lab', icon:'diagonal' },
   { href:'/analyst', label:'AI Analyst', icon:'spark' },
   { href:'/history', label:'History', icon:'history' },
   { href:'/risk-lab', label:'Risk Lab', icon:'shield' },

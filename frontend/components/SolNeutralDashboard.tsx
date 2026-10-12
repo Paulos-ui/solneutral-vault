@@ -51,7 +51,7 @@ export function SolNeutralDashboard(){
     <div className="sn-kpi-grid">
       <Card title="Wallet SOL" icon="wallet" subtitle="Native SOL · Solana testnet" accent><span>{formatObservedNumber(account.sol,4)}</span><small>SOL</small></Card>
       <Card title="SOL Reserve" icon="layers" subtitle="Your wallet-owned wrapped SOL"><span>{reserveStatus==='verified'?reserveValue?.toFixed(4):'—'}</span><small>{reserveStatus==='unknown'?'Retry balance read':'wSOL · testnet'}</small><Link href="/trade" className="sn-card-link">Manage SOL ↗</Link></Card>
-      <Card title="Your Control" icon="shield" subtitle="Self-custody · no protocol vault"><span className="sn-v72-kpi-compact">Wallet owned</span><Link href="/docs" className="sn-card-link">How it works ↗</Link></Card>
+      <Card title="Your Control" icon="shield" subtitle="Self-custody · no protocol vault"><span className="sn-v72-kpi-compact sn-kpi-tight">Self custody</span><Link href="/docs" className="sn-card-link">How it works ↗</Link></Card>
       <Card title="Transaction History" icon="history" subtitle="Last 12 public testnet signatures"><span>{account.historyAvailable?account.signatures.length:'—'}</span><Link href="/history" className="sn-card-link">View activity ↗</Link></Card>
     </div>
     <div className="sn-dashboard-grid">
