@@ -54,7 +54,10 @@ export function RiskAnalyst() {
           ? payload.error : 'SolNeutral AI is temporarily unavailable. Please try again.';
         throw new Error(message);
       }
-      setMessages(items => [...items, {role:'assistant', content:payload.answer}]);
+      // Keep the narrowed response value outside the state callback. TypeScript
+      // does not preserve property narrowing on an unknown value across closures.
+      const answer: string = payload.answer;
+      setMessages(items => [...items, {role:'assistant', content:answer}]);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'SolNeutral AI is temporarily unavailable.');
     } finally { setBusy(false); }
